@@ -128,7 +128,7 @@ live / polling / offline indicator.
 ## Testing
 
 ```bash
-npm test                     # 135 unit and component tests
+npm test                     # 141 unit and component tests
 npm run test:verify-fails    # proves the suite catches broken logic
 npm run story-coverage       # which user stories have automated coverage
 ./scripts/smoke.sh --target https://perpaterb.github.io/conference-runner/

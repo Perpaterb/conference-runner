@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  defaultEventWindow,
   epochToZonedParts,
   formatCsvDateTime,
   formatDate,
@@ -126,5 +127,47 @@ describe('countdown helpers', () => {
     expect(humaniseMinutes(125)).toBe('2 hr, 5 min')
     expect(humaniseMinutes(1500)).toBe('1 day, 1 hr')
     expect(humaniseMinutes(0)).toBe('0 min')
+  })
+})
+
+describe('defaultEventWindow (US-010 prefill)', () => {
+  it('starts today at 09:00 and ends tomorrow at 17:00, in the event zone', () => {
+    const now = zonedTimeToEpoch(2026, 6, 28, 13, 42, SYDNEY)
+    const { startAt, endAt } = defaultEventWindow(SYDNEY, now)
+
+    expect(formatDateTime(startAt, SYDNEY)).toBe('28 Jun 2026, 09:00')
+    expect(formatDateTime(endAt, SYDNEY)).toBe('29 Jun 2026, 17:00')
+  })
+
+  it('uses the event zone, not the device zone', () => {
+    // The same instant is still 27 Jun in London while it is 28 Jun in Sydney.
+    const now = zonedTimeToEpoch(2026, 6, 28, 8, 0, SYDNEY)
+    expect(formatDate(defaultEventWindow(SYDNEY, now).startAt, SYDNEY)).toBe('28 Jun 2026')
+    expect(formatDate(defaultEventWindow(LONDON, now).startAt, LONDON)).toBe('27 Jun 2026')
+  })
+
+  it('rolls into the next month correctly', () => {
+    const now = zonedTimeToEpoch(2026, 6, 30, 10, 0, SYDNEY)
+    expect(formatDate(defaultEventWindow(SYDNEY, now).endAt, SYDNEY)).toBe('01 Jul 2026')
+  })
+
+  it('rolls across a year boundary', () => {
+    const now = zonedTimeToEpoch(2026, 12, 31, 10, 0, SYDNEY)
+    expect(formatDate(defaultEventWindow(SYDNEY, now).endAt, SYDNEY)).toBe('01 Jan 2027')
+  })
+
+  it('still lands on the next calendar day across a daylight-saving change', () => {
+    // Sydney springs forward overnight on 3/4 Oct 2026.
+    const now = zonedTimeToEpoch(2026, 10, 3, 10, 0, SYDNEY)
+    const { startAt, endAt } = defaultEventWindow(SYDNEY, now)
+    expect(formatDateTime(startAt, SYDNEY)).toBe('03 Oct 2026, 09:00')
+    expect(formatDateTime(endAt, SYDNEY)).toBe('04 Oct 2026, 17:00')
+  })
+
+  it('always ends after it starts', () => {
+    for (const zone of [SYDNEY, LONDON, 'UTC', 'America/New_York']) {
+      const { startAt, endAt } = defaultEventWindow(zone)
+      expect(endAt).toBeGreaterThan(startAt)
+    }
   })
 })

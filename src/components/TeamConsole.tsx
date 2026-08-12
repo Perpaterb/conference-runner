@@ -18,6 +18,41 @@ import { ConnectionBadge, Modal } from './ui'
 
 type Tab = 'sessions' | 'people' | 'requests' | 'viewAs'
 
+/**
+ * The customised login page is only ever shown to someone who is signed out, so a team member
+ * has no way to see their own branding without opening a private window. This renders exactly
+ * what a visitor holding the link sees before they sign in.
+ */
+function LoginPreview({ event, onClose }: { event: EventDoc; onClose: () => void }) {
+  const background = event.backgroundImageUrl
+    ? `url(${event.backgroundImageUrl}) center/cover`
+    : (event.backgroundColor ?? 'var(--bg)')
+
+  return (
+    <Modal title="Login page as attendees see it" onClose={onClose} wide>
+      <div
+        className="login-shell"
+        style={{ background, minHeight: 340, borderRadius: 12, border: '1px solid var(--line)' }}
+      >
+        <div className="login-card">
+          {event.logoUrl && <img className="logo" src={event.logoUrl} alt="" />}
+          <h1>{event.name}</h1>
+          <p className="muted small">
+            Sign in with Google to see your schedule. Anyone with this link can sign in.
+          </p>
+          <button className="google-btn" disabled>
+            Sign in with Google
+          </button>
+        </div>
+      </div>
+      <p className="muted small" style={{ marginTop: '0.75rem' }}>
+        Edit the logo, background and event name on the Conference Runner home page, under
+        "Customise login page". Attendees only see this screen while signed out.
+      </p>
+    </Modal>
+  )
+}
+
 export default function TeamConsole({
   event,
   role,
@@ -44,6 +79,7 @@ export default function TeamConsole({
   const [showOnboarding, setShowOnboarding] = useState(
     role === 'owner' && event.ownerOnboarded === false,
   )
+  const [previewLogin, setPreviewLogin] = useState(false)
 
   const tabs: { id: Tab; label: string; teamOnly: boolean }[] = [
     { id: 'sessions', label: 'Sessions', teamOnly: true },
@@ -69,6 +105,11 @@ export default function TeamConsole({
             </button>
           ))}
         <span style={{ flex: 1 }} />
+        {team && (
+          <button className="small ghost" onClick={() => setPreviewLogin(true)}>
+            Preview login page
+          </button>
+        )}
         <span style={{ alignSelf: 'center' }}>
           <ConnectionBadge status={membersStatus} />
         </span>
@@ -102,6 +143,8 @@ export default function TeamConsole({
       {tab === 'viewAs' && team && (
         <ImpersonatePicker members={members} onImpersonate={onImpersonate} />
       )}
+
+      {previewLogin && <LoginPreview event={event} onClose={() => setPreviewLogin(false)} />}
 
       {showOnboarding && (
         <Modal

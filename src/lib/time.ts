@@ -238,6 +238,27 @@ export function supportedTimeZones(): string[] {
   ]
 }
 
+/**
+ * Sensible defaults for a new event: today at 09:00 through tomorrow at 17:00, as wall-clock
+ * times in the event's own zone.
+ *
+ * "Tomorrow" is found by probing from midday and adding 24 hours, so a daylight-saving shift
+ * cannot land the probe back on the same date or skip one.
+ */
+export function defaultEventWindow(
+  timeZone: string,
+  now: number = Date.now(),
+): { startAt: number; endAt: number } {
+  const today = epochToZonedParts(now, timeZone)
+  const startAt = zonedTimeToEpoch(today.year, today.month, today.day, 9, 0, timeZone)
+
+  const middayToday = zonedTimeToEpoch(today.year, today.month, today.day, 12, 0, timeZone)
+  const tomorrow = epochToZonedParts(middayToday + 86_400_000, timeZone)
+  const endAt = zonedTimeToEpoch(tomorrow.year, tomorrow.month, tomorrow.day, 17, 0, timeZone)
+
+  return { startAt, endAt }
+}
+
 /** The device's zone, used only as the default selection when creating an event. */
 export function deviceTimeZone(): string {
   try {

@@ -61,6 +61,8 @@ console.
 - [x] Date **entry** is Day / Month-name / Year regardless of browser locale, not a native
       `datetime-local` (which renders MM/DD/YYYY on a US-locale machine)
 - [x] Impossible dates such as 31 Feb are rejected rather than rolled forward
+- [x] Start and end prefill to today 09:00 and tomorrow 17:00 in the chosen zone, and follow the
+      zone if it is changed before the owner edits them
 
 ### US-011 Event link and QR code
 - [x] Every event gets a 10-character random URL slug, from a confusable-free alphabet
@@ -80,6 +82,11 @@ console.
 
 ### US-013 Owner event list
 - [~] Owner sees all events they own and can reopen any
+- [~] Each event has a Delete button, gated on typing the event name
+- [~] Deleting removes the sessions, content, groups, members and requests underneath, not just
+      the event document
+- [~] A team member can preview the login page from the event page, since the real one only
+      appears to signed-out visitors
 - [x] The home page does nothing else; all other work happens on the event page
 
 ---

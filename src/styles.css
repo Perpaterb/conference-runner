@@ -196,6 +196,16 @@ textarea {
   resize: vertical;
 }
 
+/*
+ * A colour input inherits the text-input padding, which squashes the swatch into a thin line.
+ * Give it real height so the chosen colour is actually readable.
+ */
+input[type='color'] {
+  height: 30px;
+  padding: 2px;
+  cursor: pointer;
+}
+
 label {
   display: block;
   font-size: 0.85rem;

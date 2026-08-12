@@ -9,8 +9,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { useAuth } from '../lib/auth'
 import { db } from '../lib/firebase'
-import { createEvent, isUsableImageUrl, paths, toEvent, updateEvent } from '../lib/data'
-import { deviceTimeZone, formatDate, supportedTimeZones, timeZoneLabel } from '../lib/time'
+import {
+  createEvent,
+  deleteEvent,
+  isUsableImageUrl,
+  paths,
+  toEvent,
+  updateEvent,
+} from '../lib/data'
+import {
+  defaultEventWindow,
+  deviceTimeZone,
+  formatDate,
+  supportedTimeZones,
+  timeZoneLabel,
+} from '../lib/time'
 import type { EventDoc } from '../lib/types'
 import { CopyableLink, Modal, QrCode } from '../components/ui'
 import DateTimeField from '../components/DateTimeField'
@@ -26,6 +39,7 @@ export default function HomePage() {
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [customising, setCustomising] = useState<EventDoc | null>(null)
+  const [deleting, setDeleting] = useState<EventDoc | null>(null)
 
   const reload = useMemo(
     () => async () => {
@@ -135,6 +149,9 @@ export default function HomePage() {
                     <button className="small" onClick={() => setCustomising(ev)}>
                       Customise login page
                     </button>
+                    <button className="small danger" onClick={() => setDeleting(ev)}>
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}
@@ -142,6 +159,17 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {deleting && (
+        <DeleteEventModal
+          event={deleting}
+          onClose={() => setDeleting(null)}
+          onDeleted={async () => {
+            await reload()
+            setDeleting(null)
+          }}
+        />
+      )}
 
       {customising && (
         <CustomiseModal
@@ -172,9 +200,19 @@ function CreateEventForm({
   const zones = useMemo(supportedTimeZones, [])
   const [name, setName] = useState('')
   const [timeZone, setTimeZone] = useState(deviceTimeZone())
-  const [startAt, setStartAt] = useState<number | null>(null)
-  const [endAt, setEndAt] = useState<number | null>(null)
+  const initial = useMemo(() => defaultEventWindow(timeZone), [timeZone])
+  const [startAt, setStartAt] = useState<number | null>(initial.startAt)
+  const [endAt, setEndAt] = useState<number | null>(initial.endAt)
+  const [edited, setEdited] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+
+  // Changing the time zone should move the untouched defaults with it, so "09:00" stays 09:00
+  // in the newly chosen zone rather than shifting to whatever that instant now reads as.
+  useEffect(() => {
+    if (edited) return
+    setStartAt(initial.startAt)
+    setEndAt(initial.endAt)
+  }, [initial, edited])
 
   const submit = async () => {
     setProblem(null)
@@ -184,8 +222,10 @@ function CreateEventForm({
     if (endAt <= startAt) return setProblem('The end must be after the start.')
     await onCreate({ name: name.trim(), startAt, endAt, timeZone })
     setName('')
-    setStartAt(null)
-    setEndAt(null)
+    setEdited(false)
+    const next = defaultEventWindow(timeZone)
+    setStartAt(next.startAt)
+    setEndAt(next.endAt)
   }
 
   return (
@@ -218,14 +258,20 @@ function CreateEventForm({
           label="Starts"
           value={startAt}
           timeZone={timeZone}
-          onChange={setStartAt}
+          onChange={(v) => {
+            setEdited(true)
+            setStartAt(v)
+          }}
         />
         <DateTimeField
           id="ev-end"
           label="Ends"
           value={endAt}
           timeZone={timeZone}
-          onChange={setEndAt}
+          onChange={(v) => {
+            setEdited(true)
+            setEndAt(v)
+          }}
         />
       </div>
       {problem && <p className="error small">{problem}</p>}
@@ -233,6 +279,74 @@ function CreateEventForm({
         {busy ? 'Creating…' : 'Create event'}
       </button>
     </div>
+  )
+}
+
+/**
+ * Deleting an event destroys every session, group, member and request under it, and cannot be
+ * undone. A two-click confirm is too easy to fire by accident for something that irreversible,
+ * so the owner has to type the event's name.
+ */
+function DeleteEventModal({
+  event,
+  onClose,
+  onDeleted,
+}: {
+  event: EventDoc
+  onClose: () => void
+  onDeleted: () => Promise<void>
+}) {
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const matches = typed.trim().toLowerCase() === event.name.trim().toLowerCase()
+
+  return (
+    <Modal title="Delete this event" onClose={onClose}>
+      <div className="stack">
+        <p>
+          This permanently deletes <strong>{event.name}</strong> along with all of its sessions,
+          session content, groups, members and attendance requests.
+        </p>
+        <p className="muted small">
+          Anyone holding the link will get "Event not found". This cannot be undone, so export
+          your members and sessions from the event page first if you might want them back.
+        </p>
+        <div className="field">
+          <label htmlFor="del-confirm">
+            Type the event name to confirm: <strong>{event.name}</strong>
+          </label>
+          <input
+            id="del-confirm"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder={event.name}
+            autoComplete="off"
+          />
+        </div>
+        {problem && <p className="error small">{problem}</p>}
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button onClick={onClose}>Cancel</button>
+          <button
+            className="danger"
+            disabled={!matches || busy}
+            onClick={async () => {
+              setBusy(true)
+              setProblem(null)
+              try {
+                await deleteEvent(event.id)
+                await onDeleted()
+              } catch (e) {
+                setProblem((e as Error).message)
+                setBusy(false)
+              }
+            }}
+          >
+            {busy ? 'Deleting…' : 'Delete permanently'}
+          </button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 

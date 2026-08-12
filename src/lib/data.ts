@@ -220,6 +220,37 @@ export async function updateEvent(eventId: string, patch: Partial<EventDoc>): Pr
   await updateDoc(doc(db(), paths.event(eventId)), patch as DocumentData)
 }
 
+/** A write batch tops out at 500 operations, so large collections are cleared in chunks. */
+async function deleteAllIn(path: string): Promise<number> {
+  const snap = await getDocs(collection(db(), path))
+  const docs = snap.docs
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = writeBatch(db())
+    for (const d of docs.slice(i, i + 400)) batch.delete(d.ref)
+    await batch.commit()
+  }
+  return docs.length
+}
+
+/**
+ * Deletes an event and everything under it.
+ *
+ * Firestore does not cascade: deleting the event document alone would orphan every member,
+ * group, session and request, and they would still be readable by anyone who kept the link.
+ * Sessions go first because their content lives one level deeper again.
+ */
+export async function deleteEvent(eventId: string): Promise<void> {
+  const sessions = await getDocs(collection(db(), paths.sessions(eventId)))
+  for (const s of sessions.docs) {
+    await deleteAllIn(paths.content(eventId, s.id))
+  }
+  await deleteAllIn(paths.sessions(eventId))
+  await deleteAllIn(paths.requests(eventId))
+  await deleteAllIn(paths.members(eventId))
+  await deleteAllIn(paths.groups(eventId))
+  await deleteDoc(doc(db(), paths.event(eventId)))
+}
+
 /**
  * Only http(s) images are accepted for the logo and background.
  *

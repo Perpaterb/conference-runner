@@ -48,7 +48,22 @@ the 10-character slug, so the URL needs no lookup; the slug uses a confusable-fr
 retries on collision rather than overwriting. The owner is written as an event team member at
 creation so the roster is never empty. QR codes render locally via `qrcode`, no external service.
 
-Files: `src/pages/HomePage.tsx`, `src/components/ui.tsx`, `src/lib/data.ts`
+`deleteEvent` clears the subcollections before the event document, because Firestore does not
+cascade: deleting the parent alone would orphan every member, session and request while leaving
+them readable to anyone who kept the link. Batches are chunked at 400 to stay under the 500
+operation limit. The confirmation asks the owner to type the event name, since a two-click
+confirm is too easy to fire by accident for something irreversible.
+
+Start and end prefill via `defaultEventWindow`: today 09:00 to tomorrow 17:00, as wall-clock
+times in the event's zone. "Tomorrow" is found by probing from midday and adding 24 hours so a
+daylight-saving shift cannot repeat or skip a date.
+
+`LoginPreview` in the team console renders the signed-out login page on demand. Without it a team
+member has no way to see their own branding, because the real login page only ever appears to
+someone who is not signed in.
+
+Files: `src/pages/HomePage.tsx`, `src/components/ui.tsx`, `src/lib/data.ts`,
+`src/components/TeamConsole.tsx`, `src/lib/time.ts`
 
 ### US-012 Login page customisation
 
@@ -204,7 +219,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-135 unit and component tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+141 unit and component tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite
