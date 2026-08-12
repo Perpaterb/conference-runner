@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   attendeeContent,
+  membersInAnyGroup,
   canManageGroup,
   canRequestOf,
   contentState,
@@ -215,5 +216,43 @@ describe('dueRequestsFor (US-071)', () => {
   it('orders by the time the attendee is needed', () => {
     const list = [req({ atTime: 900 }), req({ atTime: 300 })]
     expect(dueRequestsFor(list, 'a@x.com', 1000).map((r) => r.atTime)).toEqual([300, 900])
+  })
+})
+
+describe('membersInAnyGroup (roster narrowing)', () => {
+  const platform = member({ email: 'a@x.com', groups: { platform: { leader: false } } })
+  const design = member({ email: 'b@x.com', groups: { design: { leader: true } } })
+  const both = member({
+    email: 'c@x.com',
+    groups: { platform: { leader: false }, design: { leader: false } },
+  })
+  const none = member({ email: 'd@x.com' })
+  const all = [platform, design, both, none]
+
+  it('keeps only people in the named groups', () => {
+    expect(membersInAnyGroup(all, ['platform']).map((m) => m.email)).toEqual([
+      'a@x.com',
+      'c@x.com',
+    ])
+  })
+
+  it('matches on any of several groups without duplicating anyone', () => {
+    expect(membersInAnyGroup(all, ['platform', 'design']).map((m) => m.email)).toEqual([
+      'a@x.com',
+      'b@x.com',
+      'c@x.com',
+    ])
+  })
+
+  it('returns nobody when no groups are selected, rather than everybody', () => {
+    expect(membersInAnyGroup(all, [])).toEqual([])
+  })
+
+  it('excludes people who are in no groups at all', () => {
+    expect(membersInAnyGroup(all, ['platform', 'design'])).not.toContain(none)
+  })
+
+  it('ignores group ids that do not exist', () => {
+    expect(membersInAnyGroup(all, ['gone'])).toEqual([])
   })
 })

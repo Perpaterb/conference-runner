@@ -137,6 +137,12 @@ console.
 - [x] Permission logic for who may edit which group is unit tested
 - [~] Any event team member can add or remove group membership
 - [~] Any event team member can toggle leader status and event-team status
+- [x] Group columns can be shown or hidden individually, with All and None
+- [x] All is disabled when everything is shown, None when nothing is
+- [x] Someone in a hidden group is flagged, so the table cannot be misread
+- [x] The choice is remembered per event, and a newly created group appears by default
+- [x] Optionally hides people who are in none of the shown groups
+- [~] The person's email column stays put while the group columns scroll sideways
 
 ### US-034 Group leader scoped management
 - [x] A leader can manage groups they lead

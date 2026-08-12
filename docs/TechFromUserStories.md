@@ -121,8 +121,16 @@ from the name, so a CSV round-trip matches by name.
 
 Role precedence lives in one pure function, `resolveRole`, mirrored by the rules.
 
+The roster stays workable at scale through a group column filter. It stores **hidden** ids rather
+than shown ids, so a group created later appears by default instead of silently vanishing from
+everyone's table, and the set is persisted in `localStorage` per event. People in a hidden group
+get a `+N hidden` badge, without which the table would read as though they were in fewer groups
+than they are. `membersInAnyGroup` backs the optional row filter. The email column is
+`position: sticky` so it stays readable while the group columns scroll sideways.
+
 Files: `src/lib/csv.ts`, `src/lib/roles.ts`, `src/lib/data.ts`, `src/components/PeopleTab.tsx`,
-`src/lib/csv.test.ts`, `src/lib/roles.test.ts`
+`src/lib/csv.test.ts`, `src/lib/roles.test.ts`, `src/components/PeopleTab.test.tsx`,
+`src/styles.css`
 
 ---
 
@@ -219,7 +227,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-141 unit and component tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+156 unit and component tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

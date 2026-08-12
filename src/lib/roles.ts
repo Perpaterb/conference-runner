@@ -62,6 +62,13 @@ export function canRequestOf(
   return led.some((groupId) => groupId in (target.groups ?? {}))
 }
 
+/** People who belong to at least one of `groupIds`. Used to narrow the roster table. */
+export function membersInAnyGroup(members: MemberDoc[], groupIds: string[]): MemberDoc[] {
+  if (groupIds.length === 0) return []
+  const wanted = new Set(groupIds)
+  return members.filter((m) => Object.keys(m.groups ?? {}).some((id) => wanted.has(id)))
+}
+
 /** Sessions an attendee can see: those assigned to a group they belong to, or marked allGroups. */
 export function visibleSessions(sessions: SessionDoc[], member: MemberDoc | undefined): SessionDoc[] {
   const groupIds = new Set(memberGroupIds(member))

@@ -5,7 +5,7 @@
  * groups they lead; anything else is disabled here and rejected by the security rules.
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   MEMBER_TEMPLATE,
   buildMemberCsv,
@@ -15,9 +15,32 @@ import {
   type RowError,
 } from '../lib/csv'
 import { applyMemberImport, deleteGroup, setGroupMembership, setTeamMember, upsertGroup } from '../lib/data'
-import { canManageGroup, isTeam, ledGroupIds } from '../lib/roles'
+import { canManageGroup, isTeam, ledGroupIds, membersInAnyGroup } from '../lib/roles'
 import type { EventDoc, GroupDoc, MemberDoc, Role } from '../lib/types'
 import { ConfirmButton, Modal } from './ui'
+
+/**
+ * Which group columns are hidden, remembered per event.
+ *
+ * Hidden ids are stored rather than shown ids, so a group added later shows up by default
+ * instead of silently disappearing from everyone's table.
+ */
+function loadHiddenGroups(eventId: string): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(`cr:hiddenGroups:${eventId}`)
+    return new Set(raw ? (JSON.parse(raw) as string[]) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function saveHiddenGroups(eventId: string, hidden: Set<string>) {
+  try {
+    window.localStorage.setItem(`cr:hiddenGroups:${eventId}`, JSON.stringify([...hidden]))
+  } catch {
+    // A full or blocked localStorage is not worth breaking the page over.
+  }
+}
 
 export default function PeopleTab({
   event,
@@ -38,15 +61,39 @@ export default function PeopleTab({
   const [filter, setFilter] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const [newGroup, setNewGroup] = useState('')
+  const [hiddenGroups, setHiddenGroups] = useState<Set<string>>(() => loadHiddenGroups(event.id))
+  const [onlyShownGroups, setOnlyShownGroups] = useState(false)
+
+  useEffect(() => saveHiddenGroups(event.id, hiddenGroups), [event.id, hiddenGroups])
+
+  const shownGroups = useMemo(
+    () => groups.filter((g) => !hiddenGroups.has(g.id)),
+    [groups, hiddenGroups],
+  )
+  const allShown = hiddenGroups.size === 0
+  const noneShown = groups.length > 0 && shownGroups.length === 0
+
+  const toggleGroup = (groupId: string) =>
+    setHiddenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupId)) next.delete(groupId)
+      else next.add(groupId)
+      return next
+    })
 
   // A leader only needs to see the people in the groups they lead.
   const visible = useMemo(() => {
-    const base = team ? members : members.filter((m) => led.some((g) => g in m.groups))
+    let base = team ? members : members.filter((m) => led.some((g) => g in m.groups))
+    // Optionally narrow the rows to the same groups the columns are narrowed to, which is what
+    // keeps the table short once there are hundreds of people.
+    if (onlyShownGroups) {
+      base = membersInAnyGroup(base, shownGroups.map((g) => g.id))
+    }
     const needle = filter.trim().toLowerCase()
     return base
       .filter((m) => (needle ? m.email.includes(needle) : true))
       .sort((a, b) => a.email.localeCompare(b.email))
-  }, [members, team, led, filter])
+  }, [members, team, led, filter, onlyShownGroups, shownGroups])
 
   const act = async (fn: () => Promise<void>) => {
     setProblem(null)
@@ -133,10 +180,69 @@ export default function PeopleTab({
 
       {problem && <p className="error small">{problem}</p>}
 
+      {groups.length > 0 && (
+        <div className="card">
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0 }}>
+              Group columns shown: {shownGroups.length} of {groups.length}
+            </h3>
+            <div className="row">
+              <button
+                className="small"
+                aria-pressed={allShown}
+                disabled={allShown}
+                onClick={() => setHiddenGroups(new Set())}
+              >
+                All
+              </button>
+              <button
+                className="small"
+                aria-pressed={noneShown}
+                disabled={noneShown}
+                onClick={() => setHiddenGroups(new Set(groups.map((g) => g.id)))}
+              >
+                None
+              </button>
+            </div>
+          </div>
+
+          <div className="chip-list">
+            {groups.map((g) => {
+              const shown = !hiddenGroups.has(g.id)
+              return (
+                <button
+                  key={g.id}
+                  className={`chip ${shown ? 'on' : ''}`}
+                  aria-pressed={shown}
+                  onClick={() => toggleGroup(g.id)}
+                  title={shown ? `Hide the ${g.name} column` : `Show the ${g.name} column`}
+                >
+                  <span aria-hidden="true">{shown ? '\u2713' : '\u00d7'}</span> {g.name}
+                </button>
+              )
+            })}
+          </div>
+
+          <label className="checkbox-row" style={{ marginTop: '0.6rem' }}>
+            <input
+              type="checkbox"
+              checked={onlyShownGroups}
+              onChange={(e) => setOnlyShownGroups(e.target.checked)}
+            />
+            <span className="small">
+              Also hide people who are not in any of the shown groups
+            </span>
+          </label>
+        </div>
+      )}
+
       <div className="card">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <h3 style={{ margin: 0 }}>
             {visible.length} {visible.length === 1 ? 'person' : 'people'}
+            {onlyShownGroups && visible.length !== members.length && (
+              <span className="muted small"> of {members.length}</span>
+            )}
           </h3>
           <input
             style={{ maxWidth: 240 }}
@@ -146,13 +252,19 @@ export default function PeopleTab({
           />
         </div>
 
+        {noneShown && (
+          <p className="muted small">
+            All group columns are hidden. Use <strong>All</strong> above to bring them back.
+          </p>
+        )}
+
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Email</th>
                 <th>Event team</th>
-                {groups.map((g) => (
+                {shownGroups.map((g) => (
                   <th key={g.id}>{g.name}</th>
                 ))}
               </tr>
@@ -166,6 +278,21 @@ export default function PeopleTab({
                     {Object.keys(m.groups).length === 0 && !m.isTeamMember && (
                       <span className="badge warn"> no groups</span>
                     )}
+                    {/* Without this the table would read as if they were in fewer groups. */}
+                    {(() => {
+                      const hidden = Object.keys(m.groups).filter((id) => hiddenGroups.has(id))
+                      return hidden.length > 0 ? (
+                        <span
+                          className="badge"
+                          title={`Also in hidden group(s): ${hidden
+                            .map((id) => groups.find((g) => g.id === id)?.name ?? id)
+                            .join(', ')}`}
+                        >
+                          {' '}
+                          +{hidden.length} hidden
+                        </span>
+                      ) : null
+                    })()}
                   </td>
                   <td>
                     <input
@@ -183,7 +310,7 @@ export default function PeopleTab({
                       }
                     />
                   </td>
-                  {groups.map((g) => {
+                  {shownGroups.map((g) => {
                     const membership = m.groups[g.id]
                     const allowed = canManageGroup(role, myMember, g.id)
                     return (
@@ -230,7 +357,7 @@ export default function PeopleTab({
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={2 + groups.length} className="muted">
+                  <td colSpan={2 + shownGroups.length} className="muted">
                     Nobody to show yet.
                   </td>
                 </tr>
