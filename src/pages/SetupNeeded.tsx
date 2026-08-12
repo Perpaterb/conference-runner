@@ -24,19 +24,20 @@ export default function SetupNeeded() {
           </p>
         </div>
         <div>
-          <h3>2. Turn on the three services</h3>
+          <h3>2. Turn on the two services</h3>
           <ul className="muted small">
             <li>
               <strong>Authentication</strong>: enable the Google sign-in provider.
             </li>
             <li>
-              <strong>Firestore Database</strong>: create it, then paste in{' '}
+              <strong>Firestore Database</strong>: create it in production mode, then paste in{' '}
               <code>firestore.rules</code> from the repo.
             </li>
-            <li>
-              <strong>Storage</strong>: create it, then paste in <code>storage.rules</code>.
-            </li>
           </ul>
+          <p className="muted small">
+            Firebase Storage is not needed. Logos and backgrounds are linked by URL rather than
+            uploaded, so the free Spark plan is enough.
+          </p>
         </div>
         <div>
           <h3>3. Authorise this domain</h3>

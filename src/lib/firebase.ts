@@ -8,7 +8,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
-import { getStorage, type FirebaseStorage } from 'firebase/storage'
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
@@ -26,7 +25,6 @@ export function isFirebaseConfigured(): boolean {
 let app: FirebaseApp | null = null
 let authInstance: Auth | null = null
 let dbInstance: Firestore | null = null
-let storageInstance: FirebaseStorage | null = null
 
 function ensureApp(): FirebaseApp {
   if (!isFirebaseConfigured()) {
@@ -46,11 +44,6 @@ export function auth(): Auth {
 export function db(): Firestore {
   if (!dbInstance) dbInstance = getFirestore(ensureApp())
   return dbInstance
-}
-
-export function storage(): FirebaseStorage {
-  if (!storageInstance) storageInstance = getStorage(ensureApp())
-  return storageInstance
 }
 
 /** Firestore document ids cannot contain "/". Emails are otherwise safe as ids. */

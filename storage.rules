@@ -1,5 +1,9 @@
 rules_version = '2';
 
+// NOT IN USE. Creating a Storage bucket now requires the paid Blaze plan, so the app links
+// logo and background images by URL instead and stays on the free Spark plan. This file is kept
+// for whenever uploads are wanted; deploy it only if you enable Storage.
+//
 // Logo and background uploads for the event login page (US-012).
 //
 // Only the owner of the event may write to that event's folder. Reads are public because the

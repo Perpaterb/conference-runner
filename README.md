@@ -4,7 +4,8 @@ Event management web app for PI planning. An event owner creates an event, sends
 and QR code, and everyone else does everything on the event page: schedules, session content,
 group management and attendance requests, all updating live with no refresh.
 
-Static site on GitHub Pages, with Firebase (Firestore, Google Auth, Storage) as the live backend.
+Static site on GitHub Pages, with Firebase (Firestore + Google Auth) as the live backend. It runs
+entirely on Firebase's free Spark plan.
 
 ---
 
@@ -18,15 +19,18 @@ ten minutes. Until it is done the deployed site shows a setup screen rather than
 At [console.firebase.google.com](https://console.firebase.google.com), create a project, then add
 a **Web app** to it. Copy the config values it shows you.
 
-### 2. Enable the three services
+### 2. Enable the two services
 
 | Service | What to do |
 | --- | --- |
 | Authentication | Enable the **Google** sign-in provider |
-| Firestore Database | Create the database, then paste in [`firestore.rules`](firestore.rules) |
-| Storage | Create the bucket, then paste in [`storage.rules`](storage.rules) |
+| Firestore Database | Create it in **production mode**, then paste in [`firestore.rules`](firestore.rules) |
 
-Both rules files matter. The UI hides things, but the rules are what actually enforce roles.
+The rules file matters. The UI hides things, but the rules are what actually enforce roles.
+
+**Storage is not needed.** Creating a bucket now requires the paid Blaze plan, so logo and
+background images are linked by URL instead of uploaded. `storage.rules` is kept in the repo for
+whenever uploads are wanted.
 
 ### 3. Authorise the domain
 
@@ -121,7 +125,7 @@ live / polling / offline indicator.
 ## Testing
 
 ```bash
-npm test                     # 102 unit and component tests
+npm test                     # 113 unit and component tests
 npm run test:verify-fails    # proves the suite catches broken logic
 npm run story-coverage       # which user stories have automated coverage
 ./scripts/smoke.sh --target https://perpaterb.github.io/conference-runner/
@@ -132,7 +136,7 @@ leader scoping, visibility windows, the scheduled-send filter, overlap columns, 
 handling, email validation) and asserts the suite goes red each time. A check nobody has seen
 fail is not a check.
 
-`story-coverage` reports honestly. At the time of writing it is **19 of 37 stories (51%)**. The
+`story-coverage` reports honestly. At the time of writing it is **22 of 37 stories (59%)**. The
 uncovered ones need a signed-in browser against a real Firebase project, which the unit suite
 cannot reach, so they are listed as needing manual verification rather than quietly assumed to
 work. `smoke.sh` verifies a deployment is reachable, built correctly and wired to Firebase; it
@@ -150,3 +154,5 @@ cannot sign in, so it does not prove the auth or realtime paths.
    in rules costs a document read per session per query.
 3. **Attendee emails are visible to event team members and group leaders**, which they need for
    the roster and for addressing requests. Plain attendees cannot list the roster.
+4. **Logos and backgrounds are linked, not hosted.** If the URL you paste goes away, the image
+   goes with it. Enabling Storage and deploying `storage.rules` would fix this.

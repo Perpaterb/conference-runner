@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { useAuth } from '../lib/auth'
 import { db } from '../lib/firebase'
-import { createEvent, paths, toEvent, updateEvent, uploadEventImage } from '../lib/data'
+import { createEvent, isUsableImageUrl, paths, toEvent, updateEvent } from '../lib/data'
 import {
   deviceTimeZone,
   formatDate,
@@ -267,19 +267,8 @@ function CustomiseModal({
   const [busy, setBusy] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
 
-  const upload = async (kind: 'logo' | 'background', file: File) => {
-    setBusy(kind)
-    setProblem(null)
-    try {
-      const url = await uploadEventImage(event.id, kind, file)
-      if (kind === 'logo') setLogoUrl(url)
-      else setBgUrl(url)
-    } catch (e) {
-      setProblem(`Upload failed: ${(e as Error).message}`)
-    } finally {
-      setBusy(null)
-    }
-  }
+  const logoOk = isUsableImageUrl(logoUrl)
+  const bgOk = isUsableImageUrl(bgUrl)
 
   const save = async () => {
     setBusy('save')
@@ -289,6 +278,14 @@ function CustomiseModal({
     if (startAt === null || endAt === null || endAt <= startAt) {
       setBusy(null)
       return setProblem('Check the start and end times.')
+    }
+    if (logoUrl.trim() && !logoOk) {
+      setBusy(null)
+      return setProblem('The logo URL must be a full http:// or https:// address.')
+    }
+    if (bgUrl.trim() && !bgOk) {
+      setBusy(null)
+      return setProblem('The background URL must be a full http:// or https:// address.')
     }
     try {
       await updateEvent(event.id, {
@@ -316,30 +313,39 @@ function CustomiseModal({
             <input id="c-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="c-logo">Logo</label>
+            <label htmlFor="c-logo">Logo image URL (optional)</label>
             <input
               id="c-logo"
-              type="file"
-              accept="image/*"
-              onChange={(e) => e.target.files?.[0] && void upload('logo', e.target.files[0])}
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="https://example.com/logo.png"
             />
-            {busy === 'logo' && <p className="muted small">Uploading…</p>}
+            {logoUrl.trim() && !logoOk && (
+              <p className="error small">Needs to be a full http:// or https:// address.</p>
+            )}
           </div>
           <div className="field">
-            <label htmlFor="c-bg">Background image (optional)</label>
+            <label htmlFor="c-bg">Background image URL (optional)</label>
             <input
               id="c-bg"
-              type="file"
-              accept="image/*"
-              onChange={(e) => e.target.files?.[0] && void upload('background', e.target.files[0])}
+              value={bgUrl}
+              onChange={(e) => setBgUrl(e.target.value)}
+              placeholder="https://example.com/background.jpg"
             />
-            {busy === 'background' && <p className="muted small">Uploading…</p>}
+            {bgUrl.trim() && !bgOk && (
+              <p className="error small">Needs to be a full http:// or https:// address.</p>
+            )}
             {bgUrl && (
               <button className="small ghost" onClick={() => setBgUrl('')}>
                 Remove background image
               </button>
             )}
           </div>
+          <p className="muted small">
+            Images are linked, not uploaded, because Firebase Storage now needs the paid Blaze
+            plan. Host the file anywhere public (your own site, a GitHub repo's raw URL, an image
+            host) and paste the direct link to the image file.
+          </p>
           <div className="field">
             <label htmlFor="c-color">Background colour</label>
             <input
@@ -379,17 +385,26 @@ function CustomiseModal({
               minHeight: 320,
               borderRadius: 12,
               border: '1px solid var(--line)',
-              background: bgUrl ? `url(${bgUrl}) center/cover` : color,
+              background: bgOk ? `url(${bgUrl}) center/cover` : color,
             }}
           >
             <div className="login-card" style={{ width: '90%' }}>
-              {logoUrl && <img className="logo" src={logoUrl} alt="" />}
+              {logoOk ? (
+                <img className="logo" src={logoUrl} alt="" />
+              ) : (
+                <div className="image-placeholder">Your logo here</div>
+              )}
               <h2>{name || 'Event name'}</h2>
               <button className="google-btn" disabled>
                 Sign in with Google
               </button>
             </div>
           </div>
+          {!bgOk && (
+            <p className="muted small" style={{ marginTop: '0.4rem' }}>
+              No background image set, so the colour above is used.
+            </p>
+          )}
         </div>
       </div>
 

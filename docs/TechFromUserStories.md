@@ -52,10 +52,17 @@ Files: `src/pages/HomePage.tsx`, `src/components/ui.tsx`, `src/lib/data.ts`
 
 ### US-012 Login page customisation
 
-Logo and background upload to Firebase Storage under `events/{eventId}/`, with a live preview of
-the login page beside the form.
+Logo and background are **linked by URL**, not uploaded. Firebase Storage now requires the paid
+Blaze plan to create a bucket, so the POC stays on the free Spark plan. `isUsableImageUrl()`
+accepts only `http:` and `https:`, rejecting `javascript:`, `data:` and `file:` rather than
+putting them in an `img` tag. When no logo is linked the preview shows a dashed "Your logo here"
+placeholder.
 
-Files: `src/pages/HomePage.tsx`, `src/lib/data.ts` (`uploadEventImage`), `storage.rules`
+`storage.rules` is retained but unused; the Storage SDK import was removed from `firebase.ts` so
+the bundle no longer carries it.
+
+Files: `src/pages/HomePage.tsx`, `src/lib/data.ts` (`isUsableImageUrl`), `src/lib/firebase.ts`,
+`src/pages/SetupNeeded.tsx`, `src/styles.css`, `src/lib/data.test.ts`
 
 ---
 
@@ -63,8 +70,8 @@ Files: `src/pages/HomePage.tsx`, `src/lib/data.ts` (`uploadEventImage`), `storag
 
 ### US-020, US-021, US-022
 
-The login page renders the owner's customisation before sign-in, which is why Storage reads are
-public. Popup sign-in falls back to redirect when popups are blocked, and an unauthorised domain
+The login page renders the owner's customisation before sign-in, from linked image URLs. Popup
+sign-in falls back to redirect when popups are blocked, and an unauthorised domain
 produces a specific message naming the fix. First sign-in writes the member record; rules permit
 that create only with zero privileges, which is what stops self-promotion.
 
@@ -180,12 +187,12 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-106 unit and component tests across `time`, `csv`, `roles`, `layout`, the attendee view and the
-unconfigured-app path.
+113 unit and component tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite
 goes red for each. All seven are caught. `scripts/story-coverage.mjs` reports which stories have
-automated coverage (20 of 37) and lists the rest as needing manual verification.
+automated coverage (22 of 37) and lists the rest as needing manual verification.
 `scripts/smoke.sh --target <url>` checks a deployment is reachable, built and wired to Firebase.
 
 Files: `src/**/*.test.ts(x)`, `src/test/setup.ts`, `scripts/verify-tests-fail.sh`,

@@ -25,8 +25,7 @@ import {
   writeBatch,
   type DocumentData,
 } from 'firebase/firestore'
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { db, emailKey, storage } from './firebase'
+import { db, emailKey } from './firebase'
 import { groupIdFromName, type ParsedMemberRow, type ParsedSessionRow } from './csv'
 import { leaderFields } from './types'
 import type {
@@ -221,15 +220,21 @@ export async function updateEvent(eventId: string, patch: Partial<EventDoc>): Pr
   await updateDoc(doc(db(), paths.event(eventId)), patch as DocumentData)
 }
 
-export async function uploadEventImage(
-  eventId: string,
-  kind: 'logo' | 'background',
-  file: File,
-): Promise<string> {
-  const extension = file.name.includes('.') ? file.name.split('.').pop() : 'png'
-  const objectRef = ref(storage(), `events/${eventId}/${kind}.${extension}`)
-  await uploadBytes(objectRef, file, { contentType: file.type })
-  return getDownloadURL(objectRef)
+/**
+ * Only http(s) images are accepted for the logo and background.
+ *
+ * Firebase Storage is not used: creating a bucket now requires the paid Blaze plan, so the POC
+ * takes image URLs instead and falls back to a placeholder. See US-012.
+ */
+export function isUsableImageUrl(url: string): boolean {
+  const trimmed = url.trim()
+  if (!trimmed) return false
+  try {
+    const parsed = new URL(trimmed)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
 // ---------------------------------------------------------------------------

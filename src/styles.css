@@ -554,6 +554,18 @@ th {
   margin-bottom: 0.75rem;
 }
 
+/* Stands in for a logo that has not been linked yet (US-012). */
+.image-placeholder {
+  display: grid;
+  place-items: center;
+  height: 84px;
+  margin-bottom: 0.75rem;
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .google-btn {
   width: 100%;
   padding: 0.7rem;

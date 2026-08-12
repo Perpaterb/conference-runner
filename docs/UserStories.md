@@ -1,7 +1,7 @@
 # Conference Runner: User Stories
 
 Event management web app for PI planning. Static SPA on GitHub Pages, Firebase (Firestore +
-Google Auth + Storage) as the live backend.
+Google Auth) as the live backend.
 
 ## Status key
 
@@ -13,7 +13,7 @@ Google Auth + Storage) as the live backend.
 
 The distinction is deliberate. Most of the `[~]` items need a signed-in browser talking to a real
 Firebase project, which the unit suite cannot reach. `npm run story-coverage` prints the same
-split. Current automated story coverage: **20 of 37 (54%)**.
+split. Current automated story coverage: **22 of 37 (59%)**.
 
 ---
 
@@ -35,7 +35,7 @@ As a developer, I want Firebase configured from build-time env so no secrets are
 - [ ] **A Firebase project is attached.** Not done: the live deployment currently has no
       `VITE_FIREBASE_*` secrets, so it serves the setup screen. `scripts/smoke.sh` reports this as
       a failing check until the secrets are added.
-- [x] Firestore, Google Auth and Storage initialised from `VITE_FIREBASE_*` env vars
+- [x] Firestore and Google Auth initialised from `VITE_FIREBASE_*` env vars
 - [x] When config is absent, the app shows a setup screen instead of a blank page
 - [x] The setup screen names every required variable and the authorized-domains step
 - [x] README documents every setup step
@@ -45,7 +45,7 @@ As an owner, I want roles enforced by the backend so nobody can bypass them with
 console.
 
 - [~] `firestore.rules` restricts every collection by role
-- [~] `storage.rules` restricts uploads to the event owner
+- [~] `storage.rules` restricts uploads to the event owner (unused: Storage is not enabled)
 - [ ] **A non-team attendee cannot write sessions, edit membership, or self-promote.** The rules
       are written to prevent this and the equivalent client-side logic is unit tested, but the
       rules themselves are unverified: that needs a Firebase emulator test suite, which is not
@@ -61,15 +61,20 @@ console.
 - [x] Dates display as DD MMM YYYY, never US ordering
 
 ### US-011 Event link and QR code
-- [~] Every event gets a 10-character random URL slug
+- [x] Every event gets a 10-character random URL slug, from a confusable-free alphabet
 - [~] Owner sees a copyable shareable link
 - [~] Owner sees a QR code and can download it as PNG
 
 ### US-012 Login page customisation
-- [~] Logo upload to Firebase Storage
-- [~] Background image upload, or a solid background colour
+- [x] Logo linked by URL, with a "Your logo here" placeholder when unset
+- [x] Only http(s) URLs are accepted; other schemes are rejected
+- [~] Background image by URL, or a solid background colour
 - [~] Event name text shown on the login page
 - [~] Live preview of the login page while editing
+
+> Changed from upload to link: Firebase Storage now requires the paid Blaze plan to create a
+> bucket, so the POC stays on the free Spark plan. `storage.rules` is kept in the repo for
+> whenever uploads are wanted.
 
 ### US-013 Owner event list
 - [~] Owner sees all events they own and can reopen any
