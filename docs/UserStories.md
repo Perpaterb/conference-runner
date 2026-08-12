@@ -32,9 +32,8 @@ As a developer, I want the app to deploy to GitHub Pages so the POC has a public
 ### US-002 Firebase project wiring
 As a developer, I want Firebase configured from build-time env so no secrets are hardcoded.
 
-- [ ] **A Firebase project is attached.** Not done: the live deployment currently has no
-      `VITE_FIREBASE_*` secrets, so it serves the setup screen. `scripts/smoke.sh` reports this as
-      a failing check until the secrets are added.
+- [x] A Firebase project is attached: the config is baked into the deployed bundle, verified by
+      `scripts/smoke.sh` passing all 7 checks against the live site
 - [x] Firestore and Google Auth initialised from `VITE_FIREBASE_*` env vars
 - [x] When config is absent, the app shows a setup screen instead of a blank page
 - [x] The setup screen names every required variable and the authorized-domains step
