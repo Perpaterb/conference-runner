@@ -116,6 +116,9 @@ group members". Per-recipient documents can, and they make acknowledgement track
 either. These fields are the allow-list a leader's edits are checked against. Only team members
 and leaders can write member documents, so an attendee cannot forge them.
 
+**Dates are entered day / month-name / year.** A native `datetime-local` follows the browser's
+locale and shows MM/DD/YYYY on a US machine, so `DateTimeField` replaces it everywhere.
+
 **Live updates plus polling.** Firestore listeners are the primary transport. On top of them the
 app forces a server read every 20 seconds, on tab focus, and on network reconnect, and shows a
 live / polling / offline indicator.
@@ -125,7 +128,7 @@ live / polling / offline indicator.
 ## Testing
 
 ```bash
-npm test                     # 113 unit and component tests
+npm test                     # 135 unit and component tests
 npm run test:verify-fails    # proves the suite catches broken logic
 npm run story-coverage       # which user stories have automated coverage
 ./scripts/smoke.sh --target https://perpaterb.github.io/conference-runner/
@@ -136,7 +139,7 @@ leader scoping, visibility windows, the scheduled-send filter, overlap columns, 
 handling, email validation) and asserts the suite goes red each time. A check nobody has seen
 fail is not a check.
 
-`story-coverage` reports honestly. At the time of writing it is **22 of 37 stories (59%)**. The
+`story-coverage` reports honestly. At the time of writing it is **24 of 37 stories (65%)**. The
 uncovered ones need a signed-in browser against a real Firebase project, which the unit suite
 cannot reach, so they are listed as needing manual verification rather than quietly assumed to
 work. `smoke.sh` verifies a deployment is reachable, built correctly and wired to Firebase; it

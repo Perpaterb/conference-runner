@@ -10,16 +10,10 @@ import { collection, getDocs, query, where } from 'firebase/firestore'
 import { useAuth } from '../lib/auth'
 import { db } from '../lib/firebase'
 import { createEvent, isUsableImageUrl, paths, toEvent, updateEvent } from '../lib/data'
-import {
-  deviceTimeZone,
-  formatDate,
-  fromDateTimeLocalValue,
-  supportedTimeZones,
-  timeZoneLabel,
-  toDateTimeLocalValue,
-} from '../lib/time'
+import { deviceTimeZone, formatDate, supportedTimeZones, timeZoneLabel } from '../lib/time'
 import type { EventDoc } from '../lib/types'
 import { CopyableLink, Modal, QrCode } from '../components/ui'
+import DateTimeField from '../components/DateTimeField'
 
 function eventUrl(eventId: string): string {
   const { origin, pathname } = window.location
@@ -178,22 +172,20 @@ function CreateEventForm({
   const zones = useMemo(supportedTimeZones, [])
   const [name, setName] = useState('')
   const [timeZone, setTimeZone] = useState(deviceTimeZone())
-  const [start, setStart] = useState('')
-  const [end, setEnd] = useState('')
+  const [startAt, setStartAt] = useState<number | null>(null)
+  const [endAt, setEndAt] = useState<number | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
 
   const submit = async () => {
     setProblem(null)
-    const startAt = fromDateTimeLocalValue(start, timeZone)
-    const endAt = fromDateTimeLocalValue(end, timeZone)
     if (!name.trim()) return setProblem('Give the event a name.')
     if (startAt === null) return setProblem('Set a start date and time.')
     if (endAt === null) return setProblem('Set an end date and time.')
     if (endAt <= startAt) return setProblem('The end must be after the start.')
     await onCreate({ name: name.trim(), startAt, endAt, timeZone })
     setName('')
-    setStart('')
-    setEnd('')
+    setStartAt(null)
+    setEndAt(null)
   }
 
   return (
@@ -221,24 +213,20 @@ function CreateEventForm({
         </select>
       </div>
       <div className="fields-2">
-        <div className="field">
-          <label htmlFor="ev-start">Starts</label>
-          <input
-            id="ev-start"
-            type="datetime-local"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="ev-end">Ends</label>
-          <input
-            id="ev-end"
-            type="datetime-local"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-          />
-        </div>
+        <DateTimeField
+          id="ev-start"
+          label="Starts"
+          value={startAt}
+          timeZone={timeZone}
+          onChange={setStartAt}
+        />
+        <DateTimeField
+          id="ev-end"
+          label="Ends"
+          value={endAt}
+          timeZone={timeZone}
+          onChange={setEndAt}
+        />
       </div>
       {problem && <p className="error small">{problem}</p>}
       <button className="primary" disabled={busy} onClick={() => void submit()}>
@@ -262,8 +250,8 @@ function CustomiseModal({
   const [color, setColor] = useState(event.backgroundColor ?? '#0f172a')
   const [logoUrl, setLogoUrl] = useState(event.logoUrl ?? '')
   const [bgUrl, setBgUrl] = useState(event.backgroundImageUrl ?? '')
-  const [startValue, setStartValue] = useState(toDateTimeLocalValue(event.startAt, event.timeZone))
-  const [endValue, setEndValue] = useState(toDateTimeLocalValue(event.endAt, event.timeZone))
+  const [startAt, setStartAt] = useState<number | null>(event.startAt)
+  const [endAt, setEndAt] = useState<number | null>(event.endAt)
   const [busy, setBusy] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
 
@@ -273,8 +261,6 @@ function CustomiseModal({
   const save = async () => {
     setBusy('save')
     setProblem(null)
-    const startAt = fromDateTimeLocalValue(startValue, event.timeZone)
-    const endAt = fromDateTimeLocalValue(endValue, event.timeZone)
     if (startAt === null || endAt === null || endAt <= startAt) {
       setBusy(null)
       return setProblem('Check the start and end times.')
@@ -355,26 +341,20 @@ function CustomiseModal({
               onChange={(e) => setColor(e.target.value)}
             />
           </div>
-          <div className="fields-2">
-            <div className="field">
-              <label htmlFor="c-start">Starts ({event.timeZone})</label>
-              <input
-                id="c-start"
-                type="datetime-local"
-                value={startValue}
-                onChange={(e) => setStartValue(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="c-end">Ends ({event.timeZone})</label>
-              <input
-                id="c-end"
-                type="datetime-local"
-                value={endValue}
-                onChange={(e) => setEndValue(e.target.value)}
-              />
-            </div>
-          </div>
+          <DateTimeField
+            id="c-start"
+            label={`Starts (${event.timeZone})`}
+            value={startAt}
+            timeZone={event.timeZone}
+            onChange={setStartAt}
+          />
+          <DateTimeField
+            id="c-end"
+            label={`Ends (${event.timeZone})`}
+            value={endAt}
+            timeZone={event.timeZone}
+            onChange={setEndAt}
+          />
         </div>
 
         <div>

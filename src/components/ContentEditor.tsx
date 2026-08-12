@@ -10,7 +10,6 @@ import { orderBy } from 'firebase/firestore'
 import { useLiveCollection, useNow } from '../lib/live'
 import { createContent, deleteContent, paths, toContent, updateContent } from '../lib/data'
 import { contentState, scheduledState } from '../lib/roles'
-import { fromDateTimeLocalValue, toDateTimeLocalValue } from '../lib/time'
 import type {
   ContentDoc,
   ContentType,
@@ -20,6 +19,7 @@ import type {
   VisibilityState,
 } from '../lib/types'
 import { ConfirmButton } from './ui'
+import DateTimeField from './DateTimeField'
 
 const STATE_LABEL: Record<VisibilityState, string> = {
   visible: 'Visible',
@@ -276,21 +276,13 @@ function ContentForm({
   const [title, setTitle] = useState(initial?.title ?? '')
   const [body, setBody] = useState(initial?.body ?? '')
   const [url, setUrl] = useState(initial?.url ?? '')
-  const [visibleFrom, setVisibleFrom] = useState(
-    initial?.visibleFrom ? toDateTimeLocalValue(initial.visibleFrom, event.timeZone) : '',
+  const [visibleFrom, setVisibleFrom] = useState<number | null>(initial?.visibleFrom ?? null)
+  const [greyFrom, setGreyFrom] = useState<number | null>(initial?.greyFrom ?? null)
+  const [hiddenFrom, setHiddenFrom] = useState<number | null>(initial?.hiddenFrom ?? null)
+  const [scheduleStart, setScheduleStart] = useState<number | null>(
+    initial?.scheduleStartAt ?? null,
   )
-  const [greyFrom, setGreyFrom] = useState(
-    initial?.greyFrom ? toDateTimeLocalValue(initial.greyFrom, event.timeZone) : '',
-  )
-  const [hiddenFrom, setHiddenFrom] = useState(
-    initial?.hiddenFrom ? toDateTimeLocalValue(initial.hiddenFrom, event.timeZone) : '',
-  )
-  const [scheduleStart, setScheduleStart] = useState(
-    initial?.scheduleStartAt ? toDateTimeLocalValue(initial.scheduleStartAt, event.timeZone) : '',
-  )
-  const [scheduleEnd, setScheduleEnd] = useState(
-    initial?.scheduleEndAt ? toDateTimeLocalValue(initial.scheduleEndAt, event.timeZone) : '',
-  )
+  const [scheduleEnd, setScheduleEnd] = useState<number | null>(initial?.scheduleEndAt ?? null)
   const [problem, setProblem] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -298,20 +290,20 @@ function ContentForm({
     if (!title.trim()) return setProblem('Give this item a title.')
     if (type === 'link' && !url.trim()) return setProblem('A link button needs a URL.')
 
-    const toEpoch = (v: string) => (v ? (fromDateTimeLocalValue(v, event.timeZone) ?? undefined) : undefined)
+    const orUndefined = (v: number | null) => v ?? undefined
     const draft: Draft = {
       type,
       title: title.trim(),
       override: initial?.override ?? 'auto',
-      visibleFrom: toEpoch(visibleFrom),
-      greyFrom: toEpoch(greyFrom),
-      hiddenFrom: toEpoch(hiddenFrom),
+      visibleFrom: orUndefined(visibleFrom),
+      greyFrom: orUndefined(greyFrom),
+      hiddenFrom: orUndefined(hiddenFrom),
     }
     if (type === 'link') draft.url = url.trim()
     if (type !== 'link') draft.body = body
     if (type === 'schedule') {
-      draft.scheduleStartAt = toEpoch(scheduleStart)
-      draft.scheduleEndAt = toEpoch(scheduleEnd)
+      draft.scheduleStartAt = orUndefined(scheduleStart)
+      draft.scheduleEndAt = orUndefined(scheduleEnd)
     }
 
     // Firestore rejects undefined values, so strip the keys that were left blank.
@@ -357,24 +349,20 @@ function ContentForm({
 
       {type === 'schedule' && (
         <div className="fields-2">
-          <div className="field">
-            <label htmlFor="c-ss">Entry starts</label>
-            <input
-              id="c-ss"
-              type="datetime-local"
-              value={scheduleStart}
-              onChange={(e) => setScheduleStart(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="c-se">Entry ends</label>
-            <input
-              id="c-se"
-              type="datetime-local"
-              value={scheduleEnd}
-              onChange={(e) => setScheduleEnd(e.target.value)}
-            />
-          </div>
+          <DateTimeField
+            id="c-ss"
+            label="Entry starts"
+            value={scheduleStart}
+            timeZone={event.timeZone}
+            onChange={setScheduleStart}
+          />
+          <DateTimeField
+            id="c-se"
+            label="Entry ends"
+            value={scheduleEnd}
+            timeZone={event.timeZone}
+            onChange={setScheduleEnd}
+          />
         </div>
       )}
 
@@ -383,33 +371,27 @@ function ContentForm({
           Visibility time window (optional, all times in {event.timeZone})
         </summary>
         <div className="fields-2" style={{ marginTop: '0.5rem' }}>
-          <div className="field">
-            <label htmlFor="c-vf">Becomes visible at</label>
-            <input
-              id="c-vf"
-              type="datetime-local"
-              value={visibleFrom}
-              onChange={(e) => setVisibleFrom(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="c-gf">Greys out at</label>
-            <input
-              id="c-gf"
-              type="datetime-local"
-              value={greyFrom}
-              onChange={(e) => setGreyFrom(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="c-hf">Hides at</label>
-            <input
-              id="c-hf"
-              type="datetime-local"
-              value={hiddenFrom}
-              onChange={(e) => setHiddenFrom(e.target.value)}
-            />
-          </div>
+          <DateTimeField
+            id="c-vf"
+            label="Becomes visible at"
+            value={visibleFrom}
+            timeZone={event.timeZone}
+            onChange={setVisibleFrom}
+          />
+          <DateTimeField
+            id="c-gf"
+            label="Greys out at"
+            value={greyFrom}
+            timeZone={event.timeZone}
+            onChange={setGreyFrom}
+          />
+          <DateTimeField
+            id="c-hf"
+            label="Hides at"
+            value={hiddenFrom}
+            timeZone={event.timeZone}
+            onChange={setHiddenFrom}
+          />
         </div>
         <p className="muted small">
           Leave these blank to control the item purely with the Show, Grey out and Hide buttons.

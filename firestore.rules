@@ -72,9 +72,14 @@ service cloud.firestore {
     // Events (US-010 to US-013, US-020)
     // -----------------------------------------------------------------------
     match /events/{eventId} {
-      // Anyone signed in and holding the link can read the event, which is what renders the
-      // login page and the schedule. The link itself is the access token (US-020).
-      allow read: if signedIn();
+      // A single event is world-readable, because the login page has to render its name, logo
+      // and background *before* anyone has signed in (US-020). The 10-character random link is
+      // the access token; without it an event id cannot practically be guessed.
+      allow get: if true;
+
+      // Listing is a different matter: it must never hand out the whole event catalogue. The
+      // owner's query filters on ownerUid, and this rule is what forces that filter to exist.
+      allow list: if signedIn() && resource.data.ownerUid == request.auth.uid;
 
       // The creator must name themselves as owner, so an event cannot be created on someone
       // else's behalf.

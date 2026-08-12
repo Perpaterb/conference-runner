@@ -40,6 +40,30 @@ export interface LiveState<T> {
   lastUpdatedAt: number | null
 }
 
+/**
+ * Derives the connection status.
+ *
+ * An error has to beat "connecting". A read the rules reject never produces a snapshot, so
+ * without this a caller that waits for the status to leave "connecting" waits forever. That is
+ * exactly what left signed-out visitors staring at a spinner on the event login page.
+ */
+export function deriveLiveStatus({
+  online,
+  lastUpdatedAt,
+  error,
+  now,
+}: {
+  online: boolean
+  lastUpdatedAt: number | null
+  error: Error | null
+  now: number
+}): LiveStatus {
+  if (error && lastUpdatedAt === null) return 'error'
+  if (!online) return 'offline'
+  if (lastUpdatedAt === null) return 'connecting'
+  return now - lastUpdatedAt > LIVE_TIMEOUT_MS ? 'polling' : 'live'
+}
+
 function useOnline(): boolean {
   const [online, setOnline] = useState(() =>
     typeof navigator === 'undefined' ? true : navigator.onLine,
@@ -61,7 +85,7 @@ function useOnline(): boolean {
  * Shared plumbing for the two hooks below: tracks freshness, wires the poll timer, the focus
  * listener and the online listener, and derives the status.
  */
-function useLivePlumbing(enabled: boolean, poll: () => void) {
+function useLivePlumbing(enabled: boolean, poll: () => void, error: Error | null) {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [tick, setTick] = useState(0)
   const online = useOnline()
@@ -95,10 +119,8 @@ function useLivePlumbing(enabled: boolean, poll: () => void) {
 
   const status: LiveStatus = useMemo(() => {
     void tick
-    if (!online) return 'offline'
-    if (lastUpdatedAt === null) return 'connecting'
-    return Date.now() - lastUpdatedAt > LIVE_TIMEOUT_MS ? 'polling' : 'live'
-  }, [online, lastUpdatedAt, tick])
+    return deriveLiveStatus({ online, lastUpdatedAt, error, now: Date.now() })
+  }, [online, lastUpdatedAt, tick, error])
 
   return { status, lastUpdatedAt, markFresh }
 }
@@ -133,7 +155,7 @@ export function useLiveCollection<T extends WithId>(
       .catch((e: Error) => setError(e))
   }, [])
 
-  const { status, lastUpdatedAt, markFresh } = useLivePlumbing(Boolean(path), poll)
+  const { status, lastUpdatedAt, markFresh } = useLivePlumbing(Boolean(path), poll, error)
 
   useEffect(() => {
     if (!path) {
@@ -179,7 +201,7 @@ export function useLiveDoc<T extends WithId>(
       .catch((e: Error) => setError(e))
   }, [path])
 
-  const { status, lastUpdatedAt, markFresh } = useLivePlumbing(Boolean(path), poll)
+  const { status, lastUpdatedAt, markFresh } = useLivePlumbing(Boolean(path), poll, error)
 
   useEffect(() => {
     if (!path) {

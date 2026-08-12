@@ -64,6 +64,18 @@ the bundle no longer carries it.
 Files: `src/pages/HomePage.tsx`, `src/lib/data.ts` (`isUsableImageUrl`), `src/lib/firebase.ts`,
 `src/pages/SetupNeeded.tsx`, `src/styles.css`, `src/lib/data.test.ts`
 
+### US-010, US-012 Date entry
+
+`DateTimeField` replaces every `<input type="datetime-local">`. The native control renders in the
+OS locale, so on a US-locale machine it shows MM/DD/YYYY, which the house style forbids. The
+replacement is built from separate fields ordered day, month-by-name, year, and echoes the value
+back as `28 Jun 2026, 09:00` so the format is unmistakable. Conversion happens in the event's zone
+throughout, and impossible dates such as 31 Feb are rejected rather than rolled into March.
+
+Files: `src/components/DateTimeField.tsx`, `src/components/DateTimeField.test.tsx`,
+`src/styles.css`, `src/pages/HomePage.tsx`, `src/components/SessionsTab.tsx`,
+`src/components/ContentEditor.tsx`, `src/components/RequestsTab.tsx`
+
 ---
 
 ## EP3: Event login and registration
@@ -150,7 +162,12 @@ Files: `src/lib/layout.ts`, `src/lib/time.ts`, `src/components/AttendeeView.tsx`
 refresh on tab focus and on `online`, and a status derived from how long it has been since the
 last snapshot: live, polling, offline. Rendered by `ConnectionBadge`.
 
-Files: `src/lib/live.ts`, `src/components/ui.tsx`
+`deriveLiveStatus` is extracted and pure so the status ladder can be tested. It returns `error`
+ahead of `connecting`: a read the rules reject never yields a snapshot, so a caller waiting for
+the status to leave `connecting` would wait forever. That was the cause of signed-out visitors
+seeing an endless spinner on the event page.
+
+Files: `src/lib/live.ts`, `src/components/ui.tsx`, `src/lib/live.test.ts`
 
 ---
 
@@ -187,12 +204,12 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-113 unit and component tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+135 unit and component tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite
 goes red for each. All seven are caught. `scripts/story-coverage.mjs` reports which stories have
-automated coverage (22 of 37) and lists the rest as needing manual verification.
+automated coverage (24 of 37) and lists the rest as needing manual verification.
 `scripts/smoke.sh --target <url>` checks a deployment is reachable, built and wired to Firebase.
 
 Files: `src/**/*.test.ts(x)`, `src/test/setup.ts`, `scripts/verify-tests-fail.sh`,

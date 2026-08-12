@@ -13,7 +13,7 @@ Google Auth) as the live backend.
 
 The distinction is deliberate. Most of the `[~]` items need a signed-in browser talking to a real
 Firebase project, which the unit suite cannot reach. `npm run story-coverage` prints the same
-split. Current automated story coverage: **22 of 37 (59%)**.
+split. Current automated story coverage: **24 of 37 (65%)**.
 
 ---
 
@@ -58,6 +58,9 @@ console.
 - [~] Google sign-in on the home page
 - [~] Create event with name, start datetime, end datetime and event time zone
 - [x] Dates display as DD MMM YYYY, never US ordering
+- [x] Date **entry** is Day / Month-name / Year regardless of browser locale, not a native
+      `datetime-local` (which renders MM/DD/YYYY on a US-locale machine)
+- [x] Impossible dates such as 31 Feb are rejected rather than rolled forward
 
 ### US-011 Event link and QR code
 - [x] Every event gets a 10-character random URL slug, from a confusable-free alphabet
@@ -84,7 +87,9 @@ console.
 ## EP3: Event login page
 
 ### US-020 Anyone with the link can sign in
-- [~] Login page renders the owner's logo, event name and background
+- [x] A signed-out visitor reaches the sign-in button and is never left on a spinner
+- [~] Login page renders the owner's logo, event name and background (needs the updated
+      `firestore.rules` deployed, which makes a single event world-readable)
 - [~] Google sign-in, open to any Google account holding the link
 - [~] A blocked popup falls back to redirect sign-in
 - [~] An unauthorised domain produces a readable error, not a silent failure

@@ -10,10 +10,11 @@ import { useMemo, useState } from 'react'
 import { createRequestBatch, deleteRequestBatch } from '../lib/data'
 import { canRequestOf, isTeam, ledGroupIds } from '../lib/roles'
 import { useNow } from '../lib/live'
-import { formatDateTime, fromDateTimeLocalValue, toDateTimeLocalValue } from '../lib/time'
+import { formatDateTime } from '../lib/time'
 import { useAuth } from '../lib/auth'
 import type { EventDoc, GroupDoc, MemberDoc, RequestDoc, Role } from '../lib/types'
 import { ConfirmButton, Modal } from './ui'
+import DateTimeField from './DateTimeField'
 
 export default function RequestsTab({
   event,
@@ -157,12 +158,10 @@ function ComposeModal({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState('')
   const [location, setLocation] = useState('')
-  const [atTime, setAtTime] = useState(toDateTimeLocalValue(Date.now() + 1_800_000, event.timeZone))
+  const [atTime, setAtTime] = useState<number | null>(Date.now() + 1_800_000)
   const [info, setInfo] = useState('')
   const [scheduleSend, setScheduleSend] = useState(false)
-  const [sendAtValue, setSendAtValue] = useState(
-    toDateTimeLocalValue(Date.now() + 900_000, event.timeZone),
-  )
+  const [sendAtValue, setSendAtValue] = useState<number | null>(Date.now() + 900_000)
   const [viaGroupId, setViaGroupId] = useState(led[0] ?? '')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -179,19 +178,17 @@ function ComposeModal({
 
   const submit = async () => {
     setProblem(null)
-    const at = fromDateTimeLocalValue(atTime, event.timeZone)
     if (selected.size === 0) return setProblem('Choose at least one person.')
-    if (at === null) return setProblem('Set the time you need them there.')
+    if (atTime === null) return setProblem('Set the time you need them there.')
     if (!team && !viaGroupId) return setProblem('Choose which of your groups you are acting for.')
 
     let sendAt = Date.now()
     if (scheduleSend) {
-      const scheduled = fromDateTimeLocalValue(sendAtValue, event.timeZone)
-      if (scheduled === null) return setProblem('Set a valid send time.')
-      if (scheduled <= Date.now()) {
+      if (sendAtValue === null) return setProblem('Set a valid send time.')
+      if (sendAtValue <= Date.now()) {
         return setProblem('The send time is in the past. Untick scheduling to send now.')
       }
-      sendAt = scheduled
+      sendAt = sendAtValue
     }
 
     setBusy(true)
@@ -199,7 +196,7 @@ function ComposeModal({
       await createRequestBatch(event.id, {
         recipientEmails: [...selected],
         location: location.trim(),
-        atTime: at,
+        atTime,
         info: info.trim(),
         sendAt,
         createdByUid: user?.uid ?? '',
@@ -294,15 +291,13 @@ function ComposeModal({
               placeholder="Room 2"
             />
           </div>
-          <div className="field">
-            <label htmlFor="r-at">When they need to be there ({event.timeZone})</label>
-            <input
-              id="r-at"
-              type="datetime-local"
-              value={atTime}
-              onChange={(e) => setAtTime(e.target.value)}
-            />
-          </div>
+          <DateTimeField
+            id="r-at"
+            label={`When they need to be there (${event.timeZone})`}
+            value={atTime}
+            timeZone={event.timeZone}
+            onChange={setAtTime}
+          />
         </div>
 
         <div className="field">
@@ -321,11 +316,12 @@ function ComposeModal({
           </label>
           {scheduleSend && (
             <>
-              <input
-                type="datetime-local"
+              <DateTimeField
+                id="r-sendat"
+                label={`Send at (${event.timeZone})`}
                 value={sendAtValue}
-                onChange={(e) => setSendAtValue(e.target.value)}
-                style={{ marginTop: '0.4rem' }}
+                timeZone={event.timeZone}
+                onChange={setSendAtValue}
               />
               <p className="muted small" style={{ marginTop: '0.3rem' }}>
                 The request stays hidden until then. Note that for this POC the hiding is done in

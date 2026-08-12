@@ -59,7 +59,7 @@ export default function EventPage() {
     [event, myMemberState.data, user?.uid, user?.email],
   )
 
-  if (authLoading || eventState.status === 'connecting') {
+  if (authLoading) {
     return (
       <div className="center">
         <p className="muted">Loading…</p>
@@ -67,13 +67,25 @@ export default function EventPage() {
     )
   }
 
+  // The signed-out check comes before waiting on the event document. The event is publicly
+  // readable so the login page can show its branding, but if that read fails for any reason the
+  // visitor still gets a usable sign-in button rather than an endless spinner.
   if (!user) {
     return (
       <EventLogin
         event={event}
-        error={authError ?? eventState.error?.message ?? null}
+        loading={eventState.status === 'connecting'}
+        error={authError}
         onSignIn={() => void signIn()}
       />
+    )
+  }
+
+  if (eventState.status === 'connecting') {
+    return (
+      <div className="center">
+        <p className="muted">Loading…</p>
+      </div>
     )
   }
 
@@ -211,10 +223,12 @@ function EventShell({
 /** US-020: the customised login page anyone holding the link can use. */
 function EventLogin({
   event,
+  loading,
   error,
   onSignIn,
 }: {
   event: EventDoc | null
+  loading: boolean
   error: string | null
   onSignIn: () => void
 }) {
@@ -226,7 +240,7 @@ function EventLogin({
     <div className="login-shell" style={{ background }}>
       <div className="login-card">
         {event?.logoUrl && <img className="logo" src={event.logoUrl} alt="" />}
-        <h1>{event?.name ?? 'Event'}</h1>
+        <h1>{event?.name ?? (loading ? 'Loading event…' : 'Event')}</h1>
         <p className="muted small">
           Sign in with Google to see your schedule. Anyone with this link can sign in.
         </p>

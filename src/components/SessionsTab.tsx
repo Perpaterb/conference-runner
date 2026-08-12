@@ -15,16 +15,12 @@ import {
   deleteSession,
   updateSession,
 } from '../lib/data'
-import {
-  formatDate,
-  formatTime,
-  fromDateTimeLocalValue,
-  toDateTimeLocalValue,
-} from '../lib/time'
+import { formatDate, formatTime } from '../lib/time'
 import { useNow } from '../lib/live'
 import type { EventDoc, GroupDoc, SessionDoc } from '../lib/types'
 import { ConfirmButton, Modal } from './ui'
 import ContentEditor from './ContentEditor'
+import DateTimeField from './DateTimeField'
 
 export default function SessionsTab({
   event,
@@ -165,12 +161,8 @@ function SessionEditor({
   const [title, setTitle] = useState(session?.title ?? '')
   const [description, setDescription] = useState(session?.description ?? '')
   const [location, setLocation] = useState(session?.location ?? '')
-  const [start, setStart] = useState(
-    toDateTimeLocalValue(session?.startAt ?? event.startAt, event.timeZone),
-  )
-  const [end, setEnd] = useState(
-    toDateTimeLocalValue(session?.endAt ?? event.startAt + 3_600_000, event.timeZone),
-  )
+  const [startAt, setStartAt] = useState<number | null>(session?.startAt ?? event.startAt)
+  const [endAt, setEndAt] = useState<number | null>(session?.endAt ?? event.startAt + 3_600_000)
   const [allGroups, setAllGroups] = useState(session?.allGroups ?? false)
   const [groupIds, setGroupIds] = useState<string[]>(session?.groupIds ?? [])
   const [problem, setProblem] = useState<string | null>(null)
@@ -178,8 +170,6 @@ function SessionEditor({
 
   const save = async () => {
     setProblem(null)
-    const startAt = fromDateTimeLocalValue(start, event.timeZone)
-    const endAt = fromDateTimeLocalValue(end, event.timeZone)
     if (!title.trim()) return setProblem('Give the session a title.')
     if (startAt === null || endAt === null) return setProblem('Set the start and end times.')
     if (endAt <= startAt) return setProblem('The end must be after the start.')
@@ -220,24 +210,20 @@ function SessionEditor({
         <input id="s-loc" value={location} onChange={(e) => setLocation(e.target.value)} />
       </div>
       <div className="fields-2">
-        <div className="field">
-          <label htmlFor="s-start">Starts ({event.timeZone})</label>
-          <input
-            id="s-start"
-            type="datetime-local"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="s-end">Ends ({event.timeZone})</label>
-          <input
-            id="s-end"
-            type="datetime-local"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-          />
-        </div>
+        <DateTimeField
+          id="s-start"
+          label={`Starts (${event.timeZone})`}
+          value={startAt}
+          timeZone={event.timeZone}
+          onChange={setStartAt}
+        />
+        <DateTimeField
+          id="s-end"
+          label={`Ends (${event.timeZone})`}
+          value={endAt}
+          timeZone={event.timeZone}
+          onChange={setEndAt}
+        />
       </div>
 
       <div className="field">

@@ -219,6 +219,59 @@ label {
   }
 }
 
+/* ---------- date and time entry ---------- */
+
+/*
+ * Always Day / Month name / Year, never the browser's locale order. A native datetime-local
+ * would render MM/DD/YYYY on a US machine, which is exactly what this avoids.
+ */
+.datetime-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.datetime-field input,
+.datetime-field select {
+  width: auto;
+  text-align: center;
+}
+
+.datetime-field .dt-day {
+  width: 4.2rem;
+}
+
+.datetime-field .dt-month {
+  width: 5.5rem;
+  text-align: left;
+}
+
+.datetime-field .dt-year {
+  width: 5.5rem;
+}
+
+.datetime-field .dt-time {
+  width: 4rem;
+}
+
+.datetime-field .dt-sep {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* The spinners steal width and are useless on a two-digit field. */
+.datetime-field input::-webkit-outer-spin-button,
+.datetime-field input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.datetime-field input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* ---------- badges ---------- */
 
 .badge {
