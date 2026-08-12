@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// Logo and background uploads for the event login page (US-012).
+//
+// Only the owner of the event may write to that event's folder. Reads are public because the
+// login page has to render the logo and background before anyone has signed in.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /events/{eventId}/{fileName} {
+      allow read: if true;
+
+      allow write: if request.auth != null
+        && firestore.get(/databases/(default)/documents/events/$(eventId)).data.ownerUid
+             == request.auth.uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+
+      allow delete: if request.auth != null
+        && firestore.get(/databases/(default)/documents/events/$(eventId)).data.ownerUid
+             == request.auth.uid;
+    }
+  }
+}

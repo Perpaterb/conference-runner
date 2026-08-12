@@ -1,0 +1,622 @@
+:root {
+  --bg: #0b1120;
+  --panel: #111a2e;
+  --panel-2: #16203a;
+  --line: #24304d;
+  --text: #e6ecf7;
+  --muted: #94a3b8;
+  --accent: #6366f1;
+  --accent-2: #22d3ee;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --radius: 12px;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent-2);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 0.5rem;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+h2 {
+  font-size: 1.2rem;
+}
+h3 {
+  font-size: 1rem;
+}
+
+p {
+  margin: 0 0 0.75rem;
+}
+
+/* ---------- layout ---------- */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: rgba(11, 17, 32, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.card.tight {
+  padding: 0.75rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.error {
+  color: var(--bad);
+}
+
+.center {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+}
+
+/* ---------- controls ---------- */
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 0.5rem 0.85rem;
+  transition: filter 0.15s ease, border-color 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+button.danger {
+  border-color: #7f1d1d;
+  color: #fecaca;
+}
+
+button.ghost {
+  background: transparent;
+}
+
+button.small {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  width: 100%;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.5rem 0.6rem;
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.field {
+  margin-bottom: 0.75rem;
+}
+
+.fields-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .fields-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- badges ---------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  white-space: nowrap;
+}
+
+.badge.ok {
+  color: var(--ok);
+  border-color: rgba(52, 211, 153, 0.4);
+}
+.badge.warn {
+  color: var(--warn);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+.badge.bad {
+  color: var(--bad);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+.badge.accent {
+  color: #c7d2fe;
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ---------- tabs ---------- */
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+
+.tab {
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0.6rem 0.9rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- timeline (US-050 to US-054) ---------- */
+
+.timeline-scroll {
+  position: relative;
+  overflow-y: auto;
+  height: calc(100vh - 108px);
+  padding: 0 1rem 40vh;
+}
+
+.timeline {
+  position: relative;
+  margin-left: 62px;
+}
+
+.hour-line {
+  position: absolute;
+  left: -62px;
+  right: 0;
+  border-top: 1px solid rgba(36, 48, 77, 0.7);
+  pointer-events: none;
+}
+
+.hour-label {
+  position: absolute;
+  left: -58px;
+  top: -0.6em;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.session-card {
+  position: absolute;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  color: inherit;
+  display: block;
+}
+
+.session-card:hover {
+  border-color: var(--accent);
+}
+
+.session-card .t {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.session-card .meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.session-card .desc {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.gap-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* The now line sits above every card (US-053). */
+.now-line {
+  position: absolute;
+  left: -62px;
+  right: 0;
+  z-index: 30;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.now-line::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--bad);
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
+}
+
+.now-pill {
+  background: var(--bad);
+  color: #1a0000;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.now-banner {
+  position: sticky;
+  top: 0;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  border-radius: 999px;
+}
+
+.now-button {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 45;
+  box-shadow: var(--shadow);
+}
+
+/* ---------- content visibility (US-043, US-044) ---------- */
+
+.content-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.7rem;
+  background: var(--panel-2);
+}
+
+.content-item.state-grey {
+  opacity: 0.45;
+  filter: grayscale(0.8);
+  pointer-events: none;
+}
+
+.content-item.state-hidden {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+/*
+ * US-044: the three state buttons are deliberately pushed apart, with the destructive
+ * "hide" control at the far end, so co-located team members do not clip each other's taps.
+ */
+.state-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--line);
+}
+
+.state-controls .spacer {
+  flex: 1;
+}
+
+.state-controls button[aria-pressed='true'] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---------- modal ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(2, 6, 23, 0.7);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.modal {
+  width: min(680px, 100%);
+  max-height: 88vh;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.1rem;
+}
+
+/* ---------- tables ---------- */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------- impersonation banner (US-061) ---------- */
+
+.impersonate-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1rem;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(251, 191, 36, 0.16),
+    rgba(251, 191, 36, 0.16) 10px,
+    rgba(251, 191, 36, 0.06) 10px,
+    rgba(251, 191, 36, 0.06) 20px
+  );
+  border-bottom: 1px solid rgba(251, 191, 36, 0.5);
+  color: #fde68a;
+}
+
+/* ---------- login page (US-020) ---------- */
+
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background-size: cover;
+  background-position: center;
+}
+
+.login-card {
+  width: min(420px, 100%);
+  text-align: center;
+  background: rgba(11, 17, 32, 0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.75rem;
+  box-shadow: var(--shadow);
+}
+
+.login-card img.logo {
+  max-width: 180px;
+  max-height: 110px;
+  object-fit: contain;
+  margin-bottom: 0.75rem;
+}
+
+.google-btn {
+  width: 100%;
+  padding: 0.7rem;
+  font-weight: 600;
+  background: #fff;
+  color: #1f2937;
+  border-color: #fff;
+}
+
+/* ---------- misc ---------- */
+
+.qr {
+  background: #fff;
+  padding: 0.5rem;
+  border-radius: 10px;
+  display: inline-block;
+  line-height: 0;
+}
+
+.link-box {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.link-box code {
+  flex: 1;
+  overflow-x: auto;
+  white-space: nowrap;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.callout {
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 0.7rem 0.85rem;
+}
+
+.list-reset {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-row input {
+  width: auto;
+}
+
+.scroll-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.4rem;
+}

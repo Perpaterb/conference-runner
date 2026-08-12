@@ -1,0 +1,193 @@
+rules_version = '2';
+
+// Conference Runner security rules (US-003).
+//
+// The UI hides things; these rules are what actually enforce roles. Everything below assumes an
+// attacker with a valid Google account, the event link, and a browser console.
+//
+// Role resolution mirrors src/lib/roles.ts:
+//   Owner > Event team member > Group leader > Group member > logged in.
+//
+// Rules cannot iterate a map's values, which is why MemberDoc carries a denormalised `isLeader`
+// flag, and why attendance requests are one document per recipient.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function eventData(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)).data;
+    }
+
+    function isOwner(eventId) {
+      return signedIn() && (
+        eventData(eventId).ownerUid == request.auth.uid ||
+        eventData(eventId).ownerEmail == myEmail()
+      );
+    }
+
+    function myMemberPath(eventId) {
+      return /databases/$(database)/documents/events/$(eventId)/members/$(myEmail());
+    }
+
+    function amMember(eventId) {
+      return signedIn() && exists(myMemberPath(eventId));
+    }
+
+    function myMember(eventId) {
+      return get(myMemberPath(eventId)).data;
+    }
+
+    function isTeam(eventId) {
+      return isOwner(eventId) || (amMember(eventId) && myMember(eventId).isTeamMember == true);
+    }
+
+    function isAnyLeader(eventId) {
+      return amMember(eventId) && myMember(eventId).isLeader == true;
+    }
+
+    function isLeaderOf(eventId, groupId) {
+      return amMember(eventId)
+        && groupId in myMember(eventId).groups
+        && myMember(eventId).groups[groupId].leader == true;
+    }
+
+    function targetMember(eventId, email) {
+      return get(/databases/$(database)/documents/events/$(eventId)/members/$(email)).data;
+    }
+
+    // Which fields changed in this update.
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // -----------------------------------------------------------------------
+    // Events (US-010 to US-013, US-020)
+    // -----------------------------------------------------------------------
+    match /events/{eventId} {
+      // Anyone signed in and holding the link can read the event, which is what renders the
+      // login page and the schedule. The link itself is the access token (US-020).
+      allow read: if signedIn();
+
+      // The creator must name themselves as owner, so an event cannot be created on someone
+      // else's behalf.
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerEmail == myEmail();
+
+      // Only the owner customises or reschedules the event; ownership itself is immutable.
+      allow update: if isOwner(eventId)
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.ownerEmail == resource.data.ownerEmail;
+
+      allow delete: if isOwner(eventId);
+
+      // ---------------------------------------------------------------------
+      // Members, groups and roles (US-021, US-031 to US-035)
+      // ---------------------------------------------------------------------
+      match /members/{memberEmail} {
+        // Anyone may read their own record. Listing everyone is limited to people who need the
+        // roster: event team members, and group leaders picking request recipients.
+        allow get: if signedIn() && (memberEmail == myEmail() || isTeam(eventId) || isAnyLeader(eventId));
+        allow list: if isTeam(eventId) || isAnyLeader(eventId);
+
+        // First sign-in self-registration (US-021). A newcomer may create only their own
+        // record, and only with no privileges: this is the rule that stops self-promotion.
+        allow create: if signedIn()
+          && memberEmail == myEmail()
+          && request.resource.data.isTeamMember == false
+          && request.resource.data.groups.keys().size() == 0
+          && request.resource.data.isLeader == false
+          && request.resource.data.ledGroupIds.size() == 0;
+
+        // Refreshing your own profile is allowed, but never your role.
+        allow update: if signedIn()
+          && memberEmail == myEmail()
+          && changed().hasOnly(['uid', 'displayName', 'photoURL']);
+
+        // Event team members manage anyone.
+        allow create, update, delete: if isTeam(eventId);
+
+        // A group leader may only touch the groups map, and only for groups they actually lead
+        // (US-034). The allow-list is ledGroupIds, not groups.keys(): the latter would also
+        // include groups they are merely a member of, letting a leader of one group edit
+        // another group's membership.
+        allow update: if isAnyLeader(eventId)
+          && changed().hasOnly(['groups', 'isLeader', 'ledGroupIds'])
+          && request.resource.data.groups.diff(resource.data.groups).affectedKeys()
+               .hasOnly(myMember(eventId).ledGroupIds);
+      }
+
+      match /groups/{groupId} {
+        // Group names are not sensitive and attendees need them to read their own memberships.
+        allow read: if signedIn();
+        allow write: if isTeam(eventId);
+      }
+
+      // ---------------------------------------------------------------------
+      // Sessions and content (US-040 to US-046)
+      // ---------------------------------------------------------------------
+      match /sessions/{sessionId} {
+        // Readable by any signed-in attendee; which sessions apply to them is filtered client
+        // side. See the caveat in docs/UserStories.md.
+        allow read: if signedIn();
+        allow write: if isTeam(eventId);
+
+        match /content/{contentId} {
+          allow read: if signedIn();
+          allow write: if isTeam(eventId);
+        }
+      }
+
+      // ---------------------------------------------------------------------
+      // Attendance requests (US-070 to US-073)
+      // ---------------------------------------------------------------------
+      match /requests/{requestId} {
+        // A recipient sees only their own; senders and the event team see everything.
+        allow get: if signedIn() && (
+          resource.data.recipientEmail == myEmail() ||
+          resource.data.createdByEmail == myEmail() ||
+          isTeam(eventId)
+        );
+        // Rules are evaluated against every document a list query returns, so an attendee's
+        // query fails unless it is constrained to their own email. The client adds that
+        // where-clause; an unconstrained query from the console is rejected outright.
+        allow list: if isTeam(eventId)
+          || isAnyLeader(eventId)
+          || (signedIn() && resource.data.recipientEmail == myEmail());
+
+        // Event team members may address anyone. A group leader must name the group they are
+        // acting through, and that recipient must actually be in it (US-073).
+        allow create: if signedIn()
+          && request.resource.data.createdByUid == request.auth.uid
+          && request.resource.data.createdByEmail == myEmail()
+          && request.resource.data.ackedAt == null
+          && (
+            isTeam(eventId)
+            || (
+              isLeaderOf(eventId, request.resource.data.viaGroupId)
+              && request.resource.data.viaGroupId in
+                   targetMember(eventId, request.resource.data.recipientEmail).groups
+            )
+          );
+
+        // The recipient may only acknowledge, never rewrite the ask.
+        allow update: if signedIn()
+          && resource.data.recipientEmail == myEmail()
+          && changed().hasOnly(['ackedAt']);
+
+        allow delete: if isTeam(eventId)
+          || (signedIn() && resource.data.createdByEmail == myEmail());
+      }
+    }
+
+    // Anything not matched above is denied.
+  }
+}
