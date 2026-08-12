@@ -24,13 +24,17 @@ As a developer, I want the app to deploy to GitHub Pages so the POC has a public
 
 - [x] React + TypeScript + Vite app builds clean with `npm run build`
 - [x] Base path works under `/conference-runner/` (confirmed in the build output)
-- [~] Deployed by GitHub Actions on push to `main`
-- [~] Deep links to an event survive a hard refresh (hash routing; `scripts/smoke.sh` checks this
-      once a deployment exists)
+- [x] Deployed by GitHub Actions on push to `main`, live at
+      <https://perpaterb.github.io/conference-runner/>
+- [x] Deep links to an event survive a hard refresh (hash routing, verified by `scripts/smoke.sh`
+      against the live deployment)
 
 ### US-002 Firebase project wiring
 As a developer, I want Firebase configured from build-time env so no secrets are hardcoded.
 
+- [ ] **A Firebase project is attached.** Not done: the live deployment currently has no
+      `VITE_FIREBASE_*` secrets, so it serves the setup screen. `scripts/smoke.sh` reports this as
+      a failing check until the secrets are added.
 - [x] Firestore, Google Auth and Storage initialised from `VITE_FIREBASE_*` env vars
 - [x] When config is absent, the app shows a setup screen instead of a blank page
 - [x] The setup screen names every required variable and the authorized-domains step
