@@ -395,14 +395,17 @@ label {
  * scrolling box gets it clipped, which is how the times ended up off the left of the page.
  */
 .timeline-grid {
+  --date-col: 0px;
+  --time-col: 58px;
   position: relative;
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
+  grid-template-columns: var(--time-col) minmax(0, 1fr);
 }
 
 /* Multi-day events get a separate date column, so dates can never collide with the times. */
 .timeline-grid.with-dates {
-  grid-template-columns: 26px 58px minmax(0, 1fr);
+  --date-col: 26px;
+  grid-template-columns: var(--date-col) var(--time-col) minmax(0, 1fr);
 }
 
 .day-axis,
@@ -578,6 +581,17 @@ label {
 /* Pinned to the very top, where centring would clip half the pill off the container. */
 .now-line.pinned {
   transform: none;
+}
+
+/*
+ * The pill sits in a slot the width of the date and time columns and is right-aligned inside
+ * it, so its right edge lands where the hour labels do and the rule starts at the lanes.
+ */
+.now-pill-slot {
+  flex: 0 0 calc(var(--date-col, 0px) + var(--time-col, 58px));
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 8px;
 }
 
 .now-line::after {

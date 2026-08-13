@@ -275,9 +275,15 @@ Files: `src/lib/layout.ts`, `src/components/Timeline.tsx`, `src/lib/time.ts`,
 
 ### US-056, US-057 Live updates and polling
 
-`useLiveCollection` / `useLiveDoc` wrap `onSnapshot` and add a 20 second forced server read, a
-refresh on tab focus and on `online`, and a status derived from how long it has been since the
-last snapshot: live, polling, offline. Rendered by `ConnectionBadge`.
+`useLiveCollection` / `useLiveDoc` wrap `onSnapshot` and add a 20 second forced server read plus
+a refresh on tab focus and on `online`.
+
+The status is derived from `snapshot.metadata.fromCache`, which is Firestore reporting whether it
+answered from its backend or from the local cache. An earlier version flipped to "polling" after
+45 seconds without a snapshot, which fired a few minutes after every page load: a healthy
+listener sends nothing at all while nothing changes, so silence looks identical to a dead socket
+if you only watch the clock. The listeners subscribe with `includeMetadataChanges` so a drop to
+cached data is actually observed.
 
 `deriveLiveStatus` is extracted and pure so the status ladder can be tested. It returns `error`
 ahead of `connecting`: a read the rules reject never yields a snapshot, so a caller waiting for
@@ -299,6 +305,16 @@ Impersonation passes `readOnly`, which disables acknowledgement, and shows a str
 The separate "live attendee view" toggle was removed. It rendered the identical screen with no
 banner and no named subject, which made it easy to forget whose view was on screen, and it showed
 the team member's own schedule, which is usually empty.
+
+### US-010 Events are days, not clock times
+
+An event's start and end used to be datetimes the owner guessed up front, which then contradicted
+whatever the session import contained. An event is now a **day range**: the owner picks a first
+and last day, stored as midnight to midnight in the event's zone. That is also what seeds the
+session CSV template's dates.
+
+Nothing has to reconcile a conflict, because there is no conflict to have: a session outside the
+chosen days simply extends the schedule, via `effectiveEventRange`.
 
 ### Effective event range
 
@@ -346,7 +362,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-235 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+239 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

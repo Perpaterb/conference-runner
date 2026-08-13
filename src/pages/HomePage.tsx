@@ -20,7 +20,10 @@ import {
 import {
   defaultEventWindow,
   deviceTimeZone,
+  endOfDayEpoch,
   formatDate,
+  lastDayOf,
+  startOfDayEpoch,
   supportedTimeZones,
   timeZoneLabel,
 } from '../lib/time'
@@ -138,7 +141,8 @@ export default function HomePage() {
                   <div>
                     <h3>{ev.name}</h3>
                     <p className="muted small" style={{ margin: 0 }}>
-                      {formatDate(ev.startAt, ev.timeZone)} to {formatDate(ev.endAt, ev.timeZone)}
+                      {formatDate(ev.startAt, ev.timeZone)} to{' '}
+                      {formatDate(lastDayOf(ev.endAt, ev.timeZone), ev.timeZone)}
                       <br />
                       {ev.timeZone} ({timeZoneLabel(ev.timeZone, ev.startAt)})
                     </p>
@@ -220,9 +224,9 @@ function CreateEventForm({
   const submit = async () => {
     setProblem(null)
     if (!name.trim()) return setProblem('Give the event a name.')
-    if (startAt === null) return setProblem('Set a start date and time.')
-    if (endAt === null) return setProblem('Set an end date and time.')
-    if (endAt <= startAt) return setProblem('The end must be after the start.')
+    if (startAt === null) return setProblem('Choose the first day.')
+    if (endAt === null) return setProblem('Choose the last day.')
+    if (endAt <= startAt) return setProblem('The last day must not be before the first.')
     await onCreate({ name: name.trim(), startAt, endAt, timeZone })
     setName('')
     setEdited(false)
@@ -258,25 +262,31 @@ function CreateEventForm({
       <div className="fields-2">
         <DateTimeField
           id="ev-start"
-          label="Starts"
+          label="First day"
           value={startAt}
           timeZone={timeZone}
+          showTime={false}
           onChange={(v) => {
             setEdited(true)
-            setStartAt(v)
+            setStartAt(v === null ? null : startOfDayEpoch(v, timeZone))
           }}
         />
         <DateTimeField
           id="ev-end"
-          label="Ends"
-          value={endAt}
+          label="Last day"
+          value={endAt === null ? null : lastDayOf(endAt, timeZone)}
           timeZone={timeZone}
+          showTime={false}
           onChange={(v) => {
             setEdited(true)
-            setEndAt(v)
+            setEndAt(v === null ? null : endOfDayEpoch(v, timeZone))
           }}
         />
       </div>
+      <p className="muted small">
+        Pick the days the event covers. There are no start and finish times to set: the schedule
+        follows the sessions, and a session outside these days simply extends the event.
+      </p>
       {problem && <p className="error small">{problem}</p>}
       <button className="primary" disabled={busy} onClick={() => void submit()}>
         {busy ? 'Creating…' : 'Create event'}
@@ -380,7 +390,7 @@ function CustomiseModal({
     setProblem(null)
     if (startAt === null || endAt === null || endAt <= startAt) {
       setBusy(null)
-      return setProblem('Check the start and end times.')
+      return setProblem('Check the first and last day.')
     }
     if (logoUrl.trim() && !logoOk) {
       setBusy(null)
@@ -458,20 +468,27 @@ function CustomiseModal({
               onChange={(e) => setColor(e.target.value)}
             />
           </div>
-          <DateTimeField
-            id="c-start"
-            label={`Starts (${event.timeZone})`}
-            value={startAt}
-            timeZone={event.timeZone}
-            onChange={setStartAt}
-          />
-          <DateTimeField
-            id="c-end"
-            label={`Ends (${event.timeZone})`}
-            value={endAt}
-            timeZone={event.timeZone}
-            onChange={setEndAt}
-          />
+          <div className="fields-2">
+            <DateTimeField
+              id="c-start"
+              label={`First day (${event.timeZone})`}
+              value={startAt}
+              timeZone={event.timeZone}
+              showTime={false}
+              onChange={(v) => setStartAt(v === null ? null : startOfDayEpoch(v, event.timeZone))}
+            />
+            <DateTimeField
+              id="c-end"
+              label={`Last day (${event.timeZone})`}
+              value={endAt === null ? null : lastDayOf(endAt, event.timeZone)}
+              timeZone={event.timeZone}
+              showTime={false}
+              onChange={(v) => setEndAt(v === null ? null : endOfDayEpoch(v, event.timeZone))}
+            />
+          </div>
+          <p className="muted small">
+            Days only. Sessions outside these days extend the schedule automatically.
+          </p>
         </div>
 
         <div>

@@ -6,8 +6,9 @@
  *  - a refresh on tab focus, since backgrounded tabs get throttled,
  *  - a refresh on `online`, so a device coming back from a dead spot catches up immediately.
  *
- * `status` drives the connection indicator: live once a snapshot has arrived from the server,
- * polling when the socket has gone quiet past the timeout, offline when the browser says so.
+ * `status` drives the connection indicator. It is derived from whether Firestore is actually
+ * serving from its backend or from its local cache, not from how long the socket has been quiet:
+ * a healthy listener sends nothing at all while nothing changes, so silence is not a fault.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -28,8 +29,6 @@ export type LiveStatus = 'connecting' | 'live' | 'polling' | 'offline' | 'error'
 
 /** How often the fallback poll forces a server read. */
 export const POLL_INTERVAL_MS = 20_000
-/** Silence longer than this downgrades the indicator from live to polling. */
-export const LIVE_TIMEOUT_MS = 45_000
 
 export interface LiveState<T> {
   data: T
@@ -46,22 +45,29 @@ export interface LiveState<T> {
  * An error has to beat "connecting". A read the rules reject never produces a snapshot, so
  * without this a caller that waits for the status to leave "connecting" waits forever. That is
  * exactly what left signed-out visitors staring at a spinner on the event login page.
+ *
+ * `fromCache` is what distinguishes a healthy connection from a degraded one. An earlier version
+ * flipped to "polling" after 45 seconds of silence, which fired constantly: Firestore sends
+ * nothing while nothing changes, so a perfectly healthy listener looks identical to a dead one
+ * if you only watch the clock. Firestore itself reports whether it answered from its backend or
+ * from the local cache, and that is the real signal.
  */
 export function deriveLiveStatus({
   online,
   lastUpdatedAt,
   error,
-  now,
+  fromCache,
 }: {
   online: boolean
   lastUpdatedAt: number | null
   error: Error | null
-  now: number
+  /** True when Firestore answered from its local cache, meaning it could not reach the backend. */
+  fromCache: boolean
 }): LiveStatus {
   if (error && lastUpdatedAt === null) return 'error'
   if (!online) return 'offline'
   if (lastUpdatedAt === null) return 'connecting'
-  return now - lastUpdatedAt > LIVE_TIMEOUT_MS ? 'polling' : 'live'
+  return fromCache ? 'polling' : 'live'
 }
 
 function useOnline(): boolean {
@@ -87,18 +93,17 @@ function useOnline(): boolean {
  */
 function useLivePlumbing(enabled: boolean, poll: () => void, error: Error | null) {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
-  const [tick, setTick] = useState(0)
+  const [fromCache, setFromCache] = useState(false)
   const online = useOnline()
 
-  const markFresh = useCallback(() => setLastUpdatedAt(Date.now()), [])
+  const markFresh = useCallback((servedFromCache: boolean) => {
+    setLastUpdatedAt(Date.now())
+    setFromCache(servedFromCache)
+  }, [])
 
   useEffect(() => {
     if (!enabled) return
-    const id = window.setInterval(() => {
-      poll()
-      // Re-render so the status can decay to "polling" even when nothing changed.
-      setTick((t) => t + 1)
-    }, POLL_INTERVAL_MS)
+    const id = window.setInterval(poll, POLL_INTERVAL_MS)
     return () => window.clearInterval(id)
   }, [enabled, poll])
 
@@ -117,10 +122,10 @@ function useLivePlumbing(enabled: boolean, poll: () => void, error: Error | null
     }
   }, [enabled, poll])
 
-  const status: LiveStatus = useMemo(() => {
-    void tick
-    return deriveLiveStatus({ online, lastUpdatedAt, error, now: Date.now() })
-  }, [online, lastUpdatedAt, tick, error])
+  const status: LiveStatus = useMemo(
+    () => deriveLiveStatus({ online, lastUpdatedAt, error, fromCache }),
+    [online, lastUpdatedAt, error, fromCache],
+  )
 
   return { status, lastUpdatedAt, markFresh }
 }
@@ -167,10 +172,12 @@ export function useLiveCollection<T extends WithId>(
     queryRef.current = q
     const unsub = onSnapshot(
       q,
+      // includeMetadataChanges so the drop to cached data is observed, not only data changes.
+      { includeMetadataChanges: true },
       (snap) => {
         setData(snap.docs.map((d) => convertRef.current(d.id, d.data())))
         setError(null)
-        markFresh()
+        markFresh(snap.metadata.fromCache)
       },
       (e) => setError(e),
     )
@@ -210,10 +217,11 @@ export function useLiveDoc<T extends WithId>(
     }
     const unsub = onSnapshot(
       doc(db(), path),
+      { includeMetadataChanges: true },
       (snap) => {
         setData(snap.exists() ? convertRef.current(snap.id, snap.data()) : null)
         setError(null)
-        markFresh()
+        markFresh(snap.metadata.fromCache)
       },
       (e) => setError(e),
     )

@@ -62,7 +62,11 @@ console.
 
 ### US-010 Owner creates an event
 - [~] Google sign-in on the home page
-- [~] Create event with name, start datetime, end datetime and event time zone
+- [x] An event is a set of **days**, not a pair of clock times: the owner picks a first and last
+      day plus the time zone
+- [x] Defaults to today and tomorrow, as whole days
+- [x] A session outside those days extends the schedule rather than conflicting with it, so an
+      import can never disagree with the event window
 - [x] Dates display as DD MMM YYYY, never US ordering
 - [x] Date **entry** is Day / Month-name / Year regardless of browser locale, not a native
       `datetime-local` (which renders MM/DD/YYYY on a US-locale machine)
@@ -246,6 +250,8 @@ console.
 - [x] During the event: shows the current time
 - [x] After the event: reads "The event has finished"
 - [x] The line renders above the session cards (z-index in `styles.css`)
+- [x] Its position tracks the clock without a refresh
+- [~] Its pill is right-aligned with the time column, so it reads against the hour labels
 - [~] During the event the view snaps so the line sits one quarter from the top
 - [~] Snapping stops the moment the user scrolls, and a "Now" button re-enables it
 

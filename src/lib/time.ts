@@ -258,24 +258,22 @@ export function endOfDayEpoch(epoch: number, timeZone: string): number {
 }
 
 /**
- * Sensible defaults for a new event: today at 09:00 through tomorrow at 17:00, as wall-clock
- * times in the event's own zone.
+ * Sensible default days for a new event: today through tomorrow, as whole days.
  *
- * "Tomorrow" is found by probing from midday and adding 24 hours, so a daylight-saving shift
- * cannot land the probe back on the same date or skip one.
+ * An event is a set of days, not a pair of clock times. The times come from its sessions, which
+ * may start earlier or run later than the owner first guessed; the day range only has to be
+ * roughly right, because {@link effectiveEventRange} widens it to whatever is scheduled.
  */
 export function defaultEventWindow(
   timeZone: string,
   now: number = Date.now(),
 ): { startAt: number; endAt: number } {
-  const today = epochToZonedParts(now, timeZone)
-  const startAt = zonedTimeToEpoch(today.year, today.month, today.day, 9, 0, timeZone)
+  return { startAt: startOfDayEpoch(now, timeZone), endAt: endOfDayEpoch(now + 86_400_000, timeZone) }
+}
 
-  const middayToday = zonedTimeToEpoch(today.year, today.month, today.day, 12, 0, timeZone)
-  const tomorrow = epochToZonedParts(middayToday + 86_400_000, timeZone)
-  const endAt = zonedTimeToEpoch(tomorrow.year, tomorrow.month, tomorrow.day, 17, 0, timeZone)
-
-  return { startAt, endAt }
+/** The last day of an event, for showing its end in a day picker. */
+export function lastDayOf(endAt: number, timeZone: string): number {
+  return startOfDayEpoch(endAt - 1, timeZone)
 }
 
 /** The device's zone, used only as the default selection when creating an event. */

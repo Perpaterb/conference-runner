@@ -5,7 +5,7 @@
  * They deliberately stop short of opening a session, which would subscribe to Firestore.
  */
 
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AttendeeView from './AttendeeView'
 import { computeLedGroupIds } from '../lib/types'
@@ -472,5 +472,38 @@ describe('an event window narrower than its own agenda', () => {
     renderNarrow()
     const pill = document.querySelector('.now-line .now-pill')!
     expect(pill.textContent).toContain('finished')
+  })
+})
+
+describe('the now-line tracks the clock', () => {
+  it('moves down the page as time passes, without a refresh', () => {
+    vi.setSystemTime(at(10))
+    renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(17) })] })
+
+    const line = () => document.querySelector('.now-line') as HTMLElement
+    const topAt10 = parseFloat(line().style.top)
+    expect(document.querySelector('.now-line .now-pill')!.textContent).toBe('10:00')
+
+    act(() => {
+      vi.advanceTimersByTime(30 * 60_000)
+    })
+
+    expect(document.querySelector('.now-line .now-pill')!.textContent).toBe('10:30')
+    expect(parseFloat(line().style.top)).toBeGreaterThan(topAt10)
+  })
+
+  it('keeps the pill and the position in step', () => {
+    vi.setSystemTime(at(9))
+    renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(17) })] })
+    const startTop = parseFloat((document.querySelector('.now-line') as HTMLElement).style.top)
+
+    act(() => {
+      vi.advanceTimersByTime(4 * 60 * 60_000)
+    })
+
+    const laterTop = parseFloat((document.querySelector('.now-line') as HTMLElement).style.top)
+    expect(document.querySelector('.now-line .now-pill')!.textContent).toBe('13:00')
+    // Four hours into an eight hour session, so roughly halfway down it.
+    expect(laterTop).toBeGreaterThan(startTop + 100)
   })
 })

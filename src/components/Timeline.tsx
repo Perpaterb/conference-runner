@@ -24,6 +24,7 @@ import {
   formatDate,
   formatTime,
   humaniseMinutes,
+  lastDayOf,
   minutesUntil,
   startOfDayEpoch,
   timeZoneLabel,
@@ -115,8 +116,8 @@ export default function Timeline({
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div>
             <strong>
-              {formatDate(event.startAt, event.timeZone)} to{' '}
-              {formatDate(event.endAt, event.timeZone)}
+              {formatDate(range.startAt, event.timeZone)} to{' '}
+              {formatDate(lastDayOf(range.endAt, event.timeZone), event.timeZone)}
             </strong>
             <span className="muted small">
               {' '}
@@ -243,17 +244,21 @@ export default function Timeline({
           */}
           {nowInRange ? (
             <div className="now-line" style={{ top: nowY }}>
-              <span className="now-pill">
-                {formatTime(now, event.timeZone)}
-                {phase === 'before' &&
-                  ` · starts in ${humaniseMinutes(minutesUntil(range.startAt, now))}`}
-                {phase === 'after' && ' · finished'}
+              <span className="now-pill-slot">
+                <span className="now-pill">
+                  {formatTime(now, event.timeZone)}
+                  {phase === 'before' &&
+                    ` · starts in ${humaniseMinutes(minutesUntil(range.startAt, now))}`}
+                  {phase === 'after' && ' · finished'}
+                </span>
               </span>
             </div>
           ) : phase === 'before' ? (
             <div className="now-line pinned" style={{ top: 0 }}>
-              <span className="now-pill">
-                Starts in {humaniseMinutes(minutesUntil(range.startAt, now))}
+              <span className="now-pill-slot">
+                <span className="now-pill">
+                  Starts in {humaniseMinutes(minutesUntil(range.startAt, now))}
+                </span>
               </span>
             </div>
           ) : null}
@@ -261,7 +266,9 @@ export default function Timeline({
 
         {phase === 'after' && !nowInRange && (
           <div className="now-line finished">
-            <span className="now-pill">The event has finished</span>
+            <span className="now-pill-slot">
+              <span className="now-pill">The event has finished</span>
+            </span>
           </div>
         )}
       </div>
