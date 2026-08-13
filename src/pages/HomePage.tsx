@@ -30,7 +30,7 @@ import {
   timeZoneLabel,
 } from '../lib/time'
 import type { EventDoc } from '../lib/types'
-import { CopyableLink, Modal, QrCode } from '../components/ui'
+import { CollapsingActions, CopyableLink, Modal, QrCode } from '../components/ui'
 import DateTimeField from '../components/DateTimeField'
 import { ThemeToggle } from '../lib/theme'
 
@@ -121,11 +121,13 @@ export default function HomePage() {
       <div className="topbar">
         <span className="brand">Conference Runner</span>
         <span className="spacer" />
-        <span className="muted small">{user.email}</span>
-        <ThemeToggle />
-        <button className="small ghost" onClick={() => void signOutNow()}>
-          Sign out
-        </button>
+        <CollapsingActions>
+          <span className="muted small">{user.email}</span>
+          <ThemeToggle />
+          <button className="small ghost" onClick={() => void signOutNow()}>
+            Sign out
+          </button>
+        </CollapsingActions>
       </div>
 
       <div className="page stack">

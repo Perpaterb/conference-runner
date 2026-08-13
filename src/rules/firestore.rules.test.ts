@@ -114,9 +114,10 @@ describe('events', () => {
 
 // ---------------------------------------------------------------------------
 
-describe('self-registration on first sign-in (US-021)', () => {
-  it('lets a newcomer create their own record with no privileges', async () => {
-    await assertSucceeds(
+describe('signing in is not membership (US-038)', () => {
+  it('does NOT let a newcomer add themselves to the roster', async () => {
+    // Holding the link gets you a sign-in, not a place on the attendee list.
+    await assertFails(
       setDoc(
         doc(as(env, NEWCOMER), `events/${EVENT_ID}/members/${NEWCOMER.email}`),
         selfRegistration(NEWCOMER.email),
@@ -124,34 +125,7 @@ describe('self-registration on first sign-in (US-021)', () => {
     )
   })
 
-  it('does not let a newcomer make themselves an event team member', async () => {
-    await assertFails(
-      setDoc(
-        doc(as(env, NEWCOMER), `events/${EVENT_ID}/members/${NEWCOMER.email}`),
-        selfRegistration(NEWCOMER.email, { isTeamMember: true }),
-      ),
-    )
-  })
-
-  it('does not let a newcomer put themselves into a group', async () => {
-    await assertFails(
-      setDoc(
-        doc(as(env, NEWCOMER), `events/${EVENT_ID}/members/${NEWCOMER.email}`),
-        selfRegistration(NEWCOMER.email, { groups: { platform: { leader: false } } }),
-      ),
-    )
-  })
-
-  it('does not let a newcomer claim to lead a group', async () => {
-    await assertFails(
-      setDoc(
-        doc(as(env, NEWCOMER), `events/${EVENT_ID}/members/${NEWCOMER.email}`),
-        selfRegistration(NEWCOMER.email, { isLeader: true, ledGroupIds: ['platform'] }),
-      ),
-    )
-  })
-
-  it('does not let a newcomer create a record for somebody else', async () => {
+  it('does not let a newcomer create a record for somebody else either', async () => {
     await assertFails(
       setDoc(
         doc(as(env, NEWCOMER), `events/${EVENT_ID}/members/victim@example.com`),
@@ -160,10 +134,88 @@ describe('self-registration on first sign-in (US-021)', () => {
     )
   })
 
-  it('does not let an anonymous visitor create a member record', async () => {
+  it('lets a newcomer ask to be added', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(env, NEWCOMER), `events/${EVENT_ID}/joinRequests/${NEWCOMER.email}`), {
+        email: NEWCOMER.email,
+        uid: NEWCOMER.uid,
+        displayName: 'New Comer',
+        requestedAt: 1_780_000_000_000,
+      }),
+    )
+  })
+
+  it('lets them ask twice without complaint', async () => {
+    const db = as(env, NEWCOMER)
+    const payload = { email: NEWCOMER.email, requestedAt: 1_780_000_000_000 }
+    await assertSucceeds(setDoc(doc(db, `events/${EVENT_ID}/joinRequests/${NEWCOMER.email}`), payload))
+    await assertSucceeds(setDoc(doc(db, `events/${EVENT_ID}/joinRequests/${NEWCOMER.email}`), payload))
+  })
+
+  it('does NOT let them ask on somebody else’s behalf', async () => {
     await assertFails(
+      setDoc(doc(as(env, NEWCOMER), `events/${EVENT_ID}/joinRequests/victim@example.com`), {
+        email: 'victim@example.com',
+        requestedAt: 1_780_000_000_000,
+      }),
+    )
+  })
+
+  it('does not let an anonymous visitor ask', async () => {
+    await assertFails(
+      setDoc(doc(anonymous(env), `events/${EVENT_ID}/joinRequests/${NEWCOMER.email}`), {
+        email: NEWCOMER.email,
+        requestedAt: 1_780_000_000_000,
+      }),
+    )
+  })
+
+  it('lets them see their own request, and withdraw it', async () => {
+    const db = as(env, NEWCOMER)
+    await assertSucceeds(
+      setDoc(doc(db, `events/${EVENT_ID}/joinRequests/${NEWCOMER.email}`), {
+        email: NEWCOMER.email,
+        requestedAt: 1_780_000_000_000,
+      }),
+    )
+    await assertSucceeds(getDoc(doc(db, `events/${EVENT_ID}/joinRequests/${NEWCOMER.email}`)))
+    await assertSucceeds(deleteDoc(doc(db, `events/${EVENT_ID}/joinRequests/${NEWCOMER.email}`)))
+  })
+
+  it('does not let one asker read another’s request', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(ctx.firestore().doc(`events/${EVENT_ID}/joinRequests/other@example.com`), {
+        email: 'other@example.com',
+        requestedAt: 1,
+      })
+    })
+    await assertFails(
+      getDoc(doc(as(env, NEWCOMER), `events/${EVENT_ID}/joinRequests/other@example.com`)),
+    )
+  })
+
+  it('does not let an attendee list who is waiting', async () => {
+    await assertFails(
+      getDocs(collection(as(env, PLATFORM_MEMBER), `events/${EVENT_ID}/joinRequests`)),
+    )
+  })
+
+  it('lets the event team list and clear them', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(ctx.firestore().doc(`events/${EVENT_ID}/joinRequests/${NEWCOMER.email}`), {
+        email: NEWCOMER.email,
+        requestedAt: 1,
+      })
+    })
+    const db = as(env, TEAM)
+    await assertSucceeds(getDocs(collection(db, `events/${EVENT_ID}/joinRequests`)))
+    await assertSucceeds(deleteDoc(doc(db, `events/${EVENT_ID}/joinRequests/${NEWCOMER.email}`)))
+  })
+
+  it('lets the event team add the person to the roster', async () => {
+    await assertSucceeds(
       setDoc(
-        doc(anonymous(env), `events/${EVENT_ID}/members/${NEWCOMER.email}`),
+        doc(as(env, TEAM), `events/${EVENT_ID}/members/${NEWCOMER.email}`),
         selfRegistration(NEWCOMER.email),
       ),
     )

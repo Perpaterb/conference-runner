@@ -332,6 +332,27 @@ avoids storing a denormalised range that could drift.
 Nothing has to reconcile a conflict, because there is no conflict to have: a session outside the
 chosen days simply extends the schedule, via `effectiveEventRange`.
 
+### US-038 Membership is granted, not taken
+
+Signing in used to create a member record, so anyone with the link was on the attendee list.
+Now `refreshMemberProfile` only updates an existing record, the security rules no longer permit
+self-creation at all, and somebody with no record lands on a "You are not on the attendee list"
+screen.
+
+The request to be added is raised automatically rather than behind a button: holding the link is
+already the intent to attend. It is keyed by email, so asking twice is a no-op. The event team
+sees a "Waiting to be added" queue; approving writes the member and deletes the request in one
+batch, so the queue cannot show a stale entry for somebody already added.
+
+That change also removed a bug: the client used to try to create the member record on every
+sign-in and report "could not register you on this event: missing or insufficient permissions"
+when the write was refused, on a page that was otherwise working perfectly.
+
+### US-039 Collapsing top bar
+
+`CollapsingActions` renders its children inline above 860px and behind a burger below it. The
+children are the same elements in both layouts, so there is no second copy to drift.
+
 ### US-037 Adding on the spot
 
 `addMemberByEmail` creates a member record from an email alone, with no groups. That is the
@@ -388,7 +409,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-246 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+248 unit and component tests, plus 62 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

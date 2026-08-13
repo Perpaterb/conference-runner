@@ -122,6 +122,18 @@ export interface ContentDoc {
 }
 
 /**
+ * Somebody who signed in with the link but is not on the attendee list, asking to be added
+ * (US-038). Document id is their lowercased email.
+ */
+export interface JoinRequestDoc {
+  id: string
+  email: string
+  uid?: string
+  displayName?: string
+  requestedAt: number
+}
+
+/**
  * One document per recipient, so security rules can verify that a group leader is allowed to
  * address this particular person. Rules have no way to iterate a list of recipients, so a single
  * multi-recipient document could not enforce US-073.

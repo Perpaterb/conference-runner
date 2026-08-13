@@ -898,6 +898,43 @@ th {
   border-color: var(--accent);
 }
 
+/* ---------- collapsing top bar ---------- */
+
+.burger {
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.3rem 0.5rem;
+}
+
+.burger-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+}
+
+.burger-menu {
+  position: absolute;
+  top: 100%;
+  right: 0.5rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  min-width: 190px;
+  padding: 0.6rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.burger-menu > * {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
 /* ---------- theme toggle ---------- */
 
 .theme-toggle {

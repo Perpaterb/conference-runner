@@ -50,7 +50,14 @@ const members = [
 
 function renderTab() {
   return render(
-    <PeopleTab event={event} role="team" myMember={undefined} members={members} groups={groups} />,
+    <PeopleTab
+      event={event}
+      role="team"
+      myMember={undefined}
+      members={members}
+      groups={groups}
+      joinRequests={[]}
+    />,
   )
 }
 

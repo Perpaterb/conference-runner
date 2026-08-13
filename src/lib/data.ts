@@ -32,6 +32,7 @@ import type {
   ContentDoc,
   EventDoc,
   GroupDoc,
+  JoinRequestDoc,
   MemberDoc,
   RequestDoc,
   SessionDoc,
@@ -55,6 +56,9 @@ export const paths = {
     `events/${eventId}/sessions/${sessionId}/content`,
   contentItem: (eventId: string, sessionId: string, contentId: string) =>
     `events/${eventId}/sessions/${sessionId}/content/${contentId}`,
+  joinRequests: (eventId: string) => `events/${eventId}/joinRequests`,
+  joinRequest: (eventId: string, email: string) =>
+    `events/${eventId}/joinRequests/${emailKey(email)}`,
   requests: (eventId: string) => `events/${eventId}/requests`,
   request: (eventId: string, requestId: string) => `events/${eventId}/requests/${requestId}`,
 }
@@ -101,6 +105,16 @@ export function toMember(id: string, d: DocumentData): MemberDoc {
     displayName: d.displayName || undefined,
     photoURL: d.photoURL || undefined,
     firstSeenAt: typeof d.firstSeenAt === 'number' ? d.firstSeenAt : undefined,
+  }
+}
+
+export function toJoinRequest(id: string, d: DocumentData): JoinRequestDoc {
+  return {
+    id,
+    email: str(d.email, id).toLowerCase(),
+    uid: d.uid || undefined,
+    displayName: d.displayName || undefined,
+    requestedAt: num(d.requestedAt),
   }
 }
 
@@ -246,6 +260,7 @@ export async function deleteEvent(eventId: string): Promise<void> {
   }
   await deleteAllIn(paths.sessions(eventId))
   await deleteAllIn(paths.requests(eventId))
+  await deleteAllIn(paths.joinRequests(eventId))
   await deleteAllIn(paths.members(eventId))
   await deleteAllIn(paths.groups(eventId))
   await deleteDoc(doc(db(), paths.event(eventId)))
@@ -272,33 +287,57 @@ export function isUsableImageUrl(url: string): boolean {
 // Members and groups (US-021, US-031 to US-034)
 // ---------------------------------------------------------------------------
 
-/** Creates the member record on first sign-in, and keeps profile fields current (US-021). */
-export async function ensureMemberRecord(
+/**
+ * Keeps a signed-in person's own profile fields current (US-021).
+ *
+ * It deliberately does NOT create the record. Signing in with the link no longer puts you on the
+ * attendee list; somebody on the event team has to add you, or approve your request. Rules allow
+ * the caller to write only these three fields, never their role.
+ */
+export async function refreshMemberProfile(
   eventId: string,
   user: { uid: string; email: string; displayName?: string | null; photoURL?: string | null },
 ): Promise<void> {
   const memberRef = doc(db(), paths.member(eventId, user.email))
   const snap = await getDoc(memberRef)
-  if (!snap.exists()) {
-    await setDoc(memberRef, {
-      email: user.email.toLowerCase(),
-      isTeamMember: false,
-      groups: {},
-      isLeader: false,
-      ledGroupIds: [],
-      uid: user.uid,
-      displayName: user.displayName ?? '',
-      photoURL: user.photoURL ?? '',
-      firstSeenAt: Date.now(),
-    })
-    return
-  }
-  // Rules allow the caller to refresh only their own profile fields, never their role.
+  if (!snap.exists()) return
   await updateDoc(memberRef, {
     uid: user.uid,
     displayName: user.displayName ?? '',
     photoURL: user.photoURL ?? '',
   })
+}
+
+/** US-038: ask the event team to be added. Idempotent, so asking twice is harmless. */
+export async function requestToJoin(
+  eventId: string,
+  user: { uid: string; email: string; displayName?: string | null },
+): Promise<void> {
+  await setDoc(doc(db(), paths.joinRequest(eventId, user.email)), {
+    email: user.email.toLowerCase(),
+    uid: user.uid,
+    displayName: user.displayName ?? '',
+    requestedAt: Date.now(),
+  })
+}
+
+/** Approving adds them to the roster and clears the request in one go. */
+export async function approveJoinRequest(eventId: string, email: string): Promise<void> {
+  const batch = writeBatch(db())
+  batch.set(doc(db(), paths.member(eventId, email)), {
+    email: email.trim().toLowerCase(),
+    isTeamMember: false,
+    groups: {},
+    isLeader: false,
+    ledGroupIds: [],
+    addedAt: Date.now(),
+  })
+  batch.delete(doc(db(), paths.joinRequest(eventId, email)))
+  await batch.commit()
+}
+
+export async function dismissJoinRequest(eventId: string, email: string): Promise<void> {
+  await deleteDoc(doc(db(), paths.joinRequest(eventId, email)))
 }
 
 /**

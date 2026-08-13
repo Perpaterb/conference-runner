@@ -42,33 +42,6 @@ export default function AttendeeView({
   const myGroups = Object.keys(member?.groups ?? {})
   const mine = visibleSessions(sessions, member)
 
-  // US-022: someone who has signed in but is in no group sees nothing else.
-  if (myGroups.length === 0 && !member?.isTeamMember) {
-    return (
-      <>
-        <div className="page center" style={{ minHeight: '60vh' }}>
-          <div className="card" style={{ maxWidth: 460, textAlign: 'center' }}>
-            {showCoverage && (
-              <p className="badge warn">Sees 0 of {sessions.length} sessions</p>
-            )}
-            <h2>You are not in any groups</h2>
-            <p className="muted">
-              You are signed in as {viewerEmail}. Once the event team adds you to a group, your
-              schedule appears here automatically.
-            </p>
-          </div>
-        </div>
-        <RequestPopups
-          event={event}
-          requests={requests}
-          viewerEmail={viewerEmail}
-          now={now}
-          readOnly={readOnly}
-        />
-      </>
-    )
-  }
-
   return (
     <>
       {showCoverage && (
@@ -83,6 +56,15 @@ export default function AttendeeView({
                   .map((id) => groups.find((g) => g.id === id)?.name ?? id)
                   .join(', ')}`}
           </span>
+        </div>
+      )}
+
+      {myGroups.length === 0 && !member?.isTeamMember && (
+        <div className="page" style={{ paddingBottom: 0 }}>
+          <p className="callout small" style={{ margin: 0 }}>
+            You are not in any groups yet, so you are seeing only the sessions open to everyone.
+            The event team can add you to a group.
+          </p>
         </div>
       )}
 

@@ -18,13 +18,15 @@ import {
 import {
   addMemberByEmail,
   applyMemberImport,
+  approveJoinRequest,
   deleteGroup,
+  dismissJoinRequest,
   setGroupMembership,
   setTeamMember,
   upsertGroup,
 } from '../lib/data'
 import { canManageGroup, isTeam, ledGroupIds, membersInAnyGroup } from '../lib/roles'
-import type { EventDoc, GroupDoc, MemberDoc, Role } from '../lib/types'
+import type { EventDoc, GroupDoc, JoinRequestDoc, MemberDoc, Role } from '../lib/types'
 import { ConfirmButton, Modal } from './ui'
 
 /**
@@ -56,12 +58,14 @@ export default function PeopleTab({
   myMember,
   members,
   groups,
+  joinRequests,
 }: {
   event: EventDoc
   role: Role
   myMember: MemberDoc | undefined
   members: MemberDoc[]
   groups: GroupDoc[]
+  joinRequests: JoinRequestDoc[]
 }) {
   const team = isTeam(role)
   const led = ledGroupIds(myMember)
@@ -168,6 +172,44 @@ export default function PeopleTab({
           </p>
         )}
       </div>
+
+      {team && joinRequests.length > 0 && (
+        <div className="card">
+          <h3>
+            Waiting to be added{' '}
+            <span className="badge warn">{joinRequests.length}</span>
+          </h3>
+          <p className="muted small">
+            These people signed in with the event link but are not on the list yet.
+          </p>
+          <ul className="list-reset stack" style={{ gap: '0.4rem' }}>
+            {[...joinRequests]
+              .sort((a, b) => a.requestedAt - b.requestedAt)
+              .map((r) => (
+                <li key={r.id} className="row" style={{ justifyContent: 'space-between' }}>
+                  <span>
+                    {r.email}
+                    {r.displayName && <span className="muted small"> · {r.displayName}</span>}
+                  </span>
+                  <span className="row">
+                    <button
+                      className="primary small"
+                      onClick={() => void act(() => approveJoinRequest(event.id, r.email))}
+                    >
+                      Add to event
+                    </button>
+                    <ConfirmButton
+                      label="Dismiss"
+                      confirmLabel="Really dismiss?"
+                      className="danger small"
+                      onConfirm={() => void act(() => dismissJoinRequest(event.id, r.email))}
+                    />
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
 
       {team && (
         <div className="card">

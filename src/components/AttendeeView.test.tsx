@@ -75,14 +75,34 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('US-022: someone in no groups', () => {
-  it('sees only their email and that they are in no groups', () => {
+describe('US-022: someone on the list but in no groups', () => {
+  it('still sees the sessions open to everyone', () => {
+    vi.setSystemTime(at(10))
+    renderView({
+      member: member(),
+      sessions: [
+        session({ id: 'plenary', title: 'Opening plenary', allGroups: true }),
+        session({ id: 'plat', title: 'Platform only', groupIds: ['platform'], allGroups: false }),
+      ],
+    })
+
+    expect(screen.getByText('Opening plenary')).toBeInTheDocument()
+    expect(screen.queryByText('Platform only')).not.toBeInTheDocument()
+  })
+
+  it('says why the schedule is thin, rather than showing nothing at all', () => {
     vi.setSystemTime(at(10))
     renderView({ member: member(), sessions: [session({ id: 'plenary' })] })
+    expect(screen.getByText(/not in any groups yet/)).toBeInTheDocument()
+  })
 
-    expect(screen.getByText('You are not in any groups')).toBeInTheDocument()
-    expect(screen.getByText(/a@x\.com/)).toBeInTheDocument()
-    expect(screen.queryByText('plenary')).not.toBeInTheDocument()
+  it('says nothing of the sort once they are in a group', () => {
+    vi.setSystemTime(at(10))
+    renderView({
+      member: member({ platform: { leader: false } }),
+      sessions: [session({ id: 'plenary' })],
+    })
+    expect(screen.queryByText(/not in any groups yet/)).not.toBeInTheDocument()
   })
 })
 
@@ -308,12 +328,13 @@ describe('US-061: what a team member sees while impersonating', () => {
     expect(screen.getByText('Design breakout')).toBeInTheDocument()
   })
 
-  it('explains an empty schedule rather than looking broken', () => {
+  it('counts the all-group sessions an ungrouped person still gets', () => {
     vi.setSystemTime(at(10))
     renderView({ member: member(), sessions, showCoverage: true })
 
-    expect(screen.getByText('Sees 0 of 3 sessions')).toBeInTheDocument()
-    expect(screen.getByText('You are not in any groups')).toBeInTheDocument()
+    // Only the plenary is open to everyone, so one of the three reaches them.
+    expect(screen.getByText('Sees 1 of 3 sessions')).toBeInTheDocument()
+    expect(screen.getByText(/is in no groups/)).toBeInTheDocument()
   })
 
   it('says nothing about coverage for an ordinary attendee', () => {

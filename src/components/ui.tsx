@@ -120,6 +120,68 @@ export function CopyableLink({ url }: { url: string }) {
   )
 }
 
+/** True while the viewport is narrower than `maxWidth`. */
+export function useIsNarrow(maxWidth = 860): boolean {
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= maxWidth,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${maxWidth}px)`)
+    const onChange = () => setNarrow(mq.matches)
+    onChange()
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [maxWidth])
+  return narrow
+}
+
+/**
+ * Top bar actions that collapse behind a burger once the bar runs out of room.
+ *
+ * The items are the same elements either way, so nothing has to be written twice and the two
+ * layouts cannot drift apart.
+ */
+export function CollapsingActions({ children }: { children: ReactNode }) {
+  const narrow = useIsNarrow()
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!narrow) setOpen(false)
+  }, [narrow])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  if (!narrow) return <>{children}</>
+
+  return (
+    <>
+      <button
+        className="small ghost burger"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={open ? 'Close menu' : 'Open menu'}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span aria-hidden="true">☰</span>
+      </button>
+      {open && (
+        <>
+          <div className="burger-backdrop" onClick={() => setOpen(false)} />
+          {/* Any click inside closes it: every item here is a one-shot action. */}
+          <div className="burger-menu" role="menu" onClick={() => setOpen(false)}>
+            {children}
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
 /** Confirmation gate for destructive actions such as a wipe-and-replace import. */
 export function ConfirmButton({
   label,

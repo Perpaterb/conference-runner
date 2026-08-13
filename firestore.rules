@@ -103,14 +103,8 @@ service cloud.firestore {
         allow get: if signedIn() && (memberEmail == myEmail() || isTeam(eventId) || isAnyLeader(eventId));
         allow list: if isTeam(eventId) || isAnyLeader(eventId);
 
-        // First sign-in self-registration (US-021). A newcomer may create only their own
-        // record, and only with no privileges: this is the rule that stops self-promotion.
-        allow create: if signedIn()
-          && memberEmail == myEmail()
-          && request.resource.data.isTeamMember == false
-          && request.resource.data.groups.keys().size() == 0
-          && request.resource.data.isLeader == false
-          && request.resource.data.ledGroupIds.size() == 0;
+        // Nobody adds themselves to the roster. Signing in with the link is not membership;
+        // the event team adds you, or approves your request under /joinRequests (US-038).
 
         // Refreshing your own profile is allowed, but never your role.
         allow update: if signedIn()
@@ -128,6 +122,24 @@ service cloud.firestore {
           && changed().hasOnly(['groups', 'isLeader', 'ledGroupIds'])
           && request.resource.data.groups.diff(resource.data.groups).affectedKeys()
                .hasOnly(myMember(eventId).ledGroupIds);
+      }
+
+      // ---------------------------------------------------------------------
+      // Requests to be added to the attendee list (US-038)
+      // ---------------------------------------------------------------------
+      match /joinRequests/{requestEmail} {
+        // You can see your own; the event team sees them all.
+        allow get: if signedIn() && (requestEmail == myEmail() || isTeam(eventId));
+        allow list: if isTeam(eventId);
+
+        // Anyone signed in and holding the link may ask, for themselves only, and asking twice
+        // is harmless because the document id is their email.
+        allow create, update: if signedIn()
+          && requestEmail == myEmail()
+          && request.resource.data.email == myEmail();
+
+        // The team approves or dismisses; the asker may withdraw.
+        allow delete: if isTeam(eventId) || (signedIn() && requestEmail == myEmail());
       }
 
       match /groups/{groupId} {

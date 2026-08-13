@@ -13,7 +13,7 @@ Google Auth) as the live backend.
 
 The distinction is deliberate. Most of the `[~]` items need a signed-in browser talking to a real
 Firebase project, which the unit suite cannot reach. `npm run story-coverage` prints the same
-split. Current automated story coverage: **30 of 41 (73%)**.
+split. Current automated story coverage: **31 of 44 (70%)**.
 
 ---
 
@@ -132,14 +132,32 @@ console.
 - [~] A blocked popup falls back to redirect sign-in
 - [~] An unauthorised domain produces a readable error, not a silent failure
 
-### US-021 First sign-in creates an attendee record
-- [~] A member record keyed by lowercased email is created on first sign-in
-- [~] Team members can see and address that person even if they were never in the CSV
+### US-021 Signing in keeps your profile current
+- [x] Signing in does **not** add you to the attendee list; that is US-038
+- [~] A signed-in person's own name and photo are stored on their member record if they have one
+- [x] A failure here is not surfaced: the only consequence is an unstored display name, and it
+      used to greet people with a permissions error on a page that was working fine
 
-### US-022 Ungrouped users see nothing but their email
-- [x] A signed-in user with no group memberships sees their email
-- [x] They see "You are not in any groups" and no schedule
+### US-022 On the list but in no groups
+- [x] They see every session open to everyone, and nothing group-specific
+- [x] They are told why their schedule is thin, rather than shown an empty page
+- [x] The notice disappears once they are in a group
 - [x] They still receive attendance requests
+
+> Changed: they used to see only "You are not in any groups" and no schedule at all. Someone on
+> the attendee list should be able to see the whole-event sessions.
+
+### US-038 Not on the attendee list
+- [x] Signing in with the link is not membership; the event team adds you
+- [x] Someone not on the list sees "You are not on the attendee list"
+- [~] A request to be added is raised automatically on sign-in, with no button to press: holding
+      the link is already the intent to attend
+- [x] Asking twice is harmless
+- [x] Nobody can ask on somebody else's behalf, and anonymous visitors cannot ask at all
+- [x] Only the event team can list who is waiting; one asker cannot see another's request
+- [~] The event team sees a "Waiting to be added" queue with Add and Dismiss
+- [x] Approving adds them to the roster and clears the request together
+- [~] The page updates by itself the moment they are added
 
 ---
 
@@ -307,6 +325,11 @@ console.
 - [~] Refresh on tab focus and on network reconnect
 - [~] The connection indicator is silent while healthy and appears only when polling, offline or
       errored. There is exactly one, in the top bar
+
+### US-039 Top bar collapses on a narrow screen
+- [~] Below 860px the top bar actions collapse behind a burger menu
+- [~] The same elements are used in both layouts, so the two cannot drift apart
+- [~] Escape, a click outside, or choosing an item closes it
 
 ### US-059 Conference status in the top bar
 - [x] The phase follows what is actually scheduled, not only the event's recorded start and end,

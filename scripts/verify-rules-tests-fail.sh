@@ -55,9 +55,24 @@ PY
 echo "Verifying the security rules tests actually catch holes."
 echo
 
-check "attendee can self-promote to event team" \
-  "&& request.resource.data.isTeamMember == false" \
-  "&& request.resource.data.isTeamMember == request.resource.data.isTeamMember"
+check "anyone can add themselves to the attendee list" \
+  "        // Nobody adds themselves to the roster. Signing in with the link is not membership;
+        // the event team adds you, or approves your request under /joinRequests (US-038)." \
+  "        allow create: if signedIn() && memberEmail == myEmail();"
+
+check "anyone can ask to join on somebody else's behalf" \
+  "allow create, update: if signedIn()
+          && requestEmail == myEmail()
+          && request.resource.data.email == myEmail();" \
+  "allow create, update: if signedIn();"
+
+check "attendees can list who is waiting to join" \
+  "        allow list: if isTeam(eventId);
+
+        // Anyone signed in and holding the link may ask" \
+  "        allow list: if signedIn();
+
+        // Anyone signed in and holding the link may ask"
 
 check "any signed-in user can list the whole roster" \
   "allow list: if isTeam(eventId) || isAnyLeader(eventId);" \

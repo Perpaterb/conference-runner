@@ -9,7 +9,15 @@ import { useState } from 'react'
 import { isTeam, ledGroupIds } from '../lib/roles'
 import { updateEvent } from '../lib/data'
 import { MEMBER_TEMPLATE, downloadText } from '../lib/csv'
-import type { EventDoc, GroupDoc, MemberDoc, RequestDoc, Role, SessionDoc } from '../lib/types'
+import type {
+  EventDoc,
+  GroupDoc,
+  JoinRequestDoc,
+  MemberDoc,
+  RequestDoc,
+  Role,
+  SessionDoc,
+} from '../lib/types'
 import PeopleTab from './PeopleTab'
 import SessionsTab from './SessionsTab'
 import RequestsTab from './RequestsTab'
@@ -60,6 +68,7 @@ export default function TeamConsole({
   groups,
   sessions,
   requests,
+  joinRequests,
   onImpersonate,
 }: {
   event: EventDoc
@@ -69,6 +78,7 @@ export default function TeamConsole({
   groups: GroupDoc[]
   sessions: SessionDoc[]
   requests: RequestDoc[]
+  joinRequests: JoinRequestDoc[]
   onImpersonate: (m: MemberDoc | null) => void
 }) {
   const team = isTeam(role)
@@ -120,6 +130,7 @@ export default function TeamConsole({
           myMember={myMember}
           members={members}
           groups={groups}
+          joinRequests={joinRequests}
         />
       )}
 
