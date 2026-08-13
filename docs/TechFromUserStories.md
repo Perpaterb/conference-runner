@@ -75,7 +75,12 @@ daylight-saving shift cannot repeat or skip a date.
 member has no way to see their own branding, because the real login page only ever appears to
 someone who is not signed in.
 
-Files: `src/pages/HomePage.tsx`, `src/components/ui.tsx`, `src/lib/data.ts`,
+A "My events" link sits top right of the event page for the owner only, since nobody else can
+create events. It is a real `Link`, not a button, so it middle-clicks and opens in a new tab like
+any other navigation.
+
+Files: `src/pages/HomePage.tsx`, `src/pages/EventPage.tsx`, `src/components/ui.tsx`,
+`src/lib/data.ts`,
 `src/components/TeamConsole.tsx`, `src/lib/time.ts`
 
 ### US-012 Login page customisation

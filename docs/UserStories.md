@@ -98,6 +98,8 @@ console.
 - [~] Every colour is defined in both palettes, with no dark value left on a light background
 
 ### US-013 Owner event list
+- [~] From an event page, the owner has a "My events" link back to the creation page, top right
+- [~] Only the owner sees it; nobody else can create events
 - [~] Owner sees all events they own and can reopen any
 - [~] Each event has a Delete button, gated on typing the event name
 - [~] Deleting removes the sessions, content, groups, members and requests underneath, not just

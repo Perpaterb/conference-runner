@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { orderBy, where } from 'firebase/firestore'
 import { useAuth } from '../lib/auth'
 import { useLiveCollection, useLiveDoc, useNow } from '../lib/live'
@@ -190,6 +190,12 @@ function EventShell({
           <ConnectionBadge status={sessions.status} />
         )}
         <span className="spacer" />
+        {/* Only the owner has anything to go back to: nobody else can create events. */}
+        {role === 'owner' && (
+          <Link className="small ghost topbar-link" to="/" title="Create and manage your events">
+            My events
+          </Link>
+        )}
         <span className="muted small">{email}</span>
         <ThemeToggle />
         <button className="small ghost" onClick={() => void signOutNow()}>
