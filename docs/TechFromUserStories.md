@@ -320,12 +320,27 @@ the team member's own schedule, which is usually empty.
 ### US-010 Events are days, not clock times
 
 An event's start and end used to be datetimes the owner guessed up front, which then contradicted
-whatever the session import contained. An event is now a **day range**: the owner picks a first
-and last day, stored as midnight to midnight in the event's zone. That is also what seeds the
-session CSV template's dates.
+whatever the session import contained. Creation now asks only for the **day it starts**, stored
+as midnight to midnight in the event's zone. There is no last day to set: `effectiveEventRange`
+grows the event to cover whatever is scheduled, so a two day agenda makes it a two day event on
+its own. The start day is also what seeds the session CSV template's dates.
+
+The home page reads each event's sessions so its card shows the days actually covered rather than
+the day originally chosen. That is one extra read per event, which is fine at this scale and
+avoids storing a denormalised range that could drift.
 
 Nothing has to reconcile a conflict, because there is no conflict to have: a session outside the
 chosen days simply extends the schedule, via `effectiveEventRange`.
+
+### US-037 Adding on the spot
+
+`addMemberByEmail` creates a member record from an email alone, with no groups. That is the
+"logged in" state, and it exists before the person ever signs in, so the team can place them in a
+group and address them in advance. It refuses an email already on the event rather than silently
+overwriting that person's groups and roles.
+
+Email validation is `isValidEmail`, exported from the CSV module and shared with the importer, so
+a person you can add by hand is exactly a person you can import.
 
 ### Effective event range
 
@@ -373,7 +388,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-242 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+246 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

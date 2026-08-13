@@ -15,8 +15,10 @@ import {
   isUsableImageUrl,
   paths,
   toEvent,
+  toSession,
   updateEvent,
 } from '../lib/data'
+import { effectiveEventRange } from '../lib/layout'
 import {
   defaultEventWindow,
   deviceTimeZone,
@@ -32,6 +34,12 @@ import { CopyableLink, Modal, QrCode } from '../components/ui'
 import DateTimeField from '../components/DateTimeField'
 import { ThemeToggle } from '../lib/theme'
 
+/** An event plus the days its sessions actually occupy. */
+interface EventWithRange extends EventDoc {
+  range: { startAt: number; endAt: number }
+  sessionCount: number
+}
+
 function eventUrl(eventId: string): string {
   const { origin, pathname } = window.location
   return `${origin}${pathname}#/e/${eventId}`
@@ -39,7 +47,7 @@ function eventUrl(eventId: string): string {
 
 export default function HomePage() {
   const { user, loading, error, signIn, signOutNow } = useAuth()
-  const [events, setEvents] = useState<EventDoc[]>([])
+  const [events, setEvents] = useState<EventWithRange[]>([])
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [customising, setCustomising] = useState<EventDoc | null>(null)
@@ -53,10 +61,23 @@ export default function HomePage() {
         const snap = await getDocs(
           query(collection(db(), paths.events), where('ownerUid', '==', user.uid)),
         )
+        const owned = snap.docs
+          .map((d) => toEvent(d.id, d.data()))
+          .sort((a, b) => b.createdAt - a.createdAt)
+
+        // Show the days the schedule actually covers, which grows as sessions are added.
         setEvents(
-          snap.docs
-            .map((d) => toEvent(d.id, d.data()))
-            .sort((a, b) => b.createdAt - a.createdAt),
+          await Promise.all(
+            owned.map(async (ev) => {
+              const sessionSnap = await getDocs(collection(db(), paths.sessions(ev.id)))
+              const sessions = sessionSnap.docs.map((d) => toSession(d.id, d.data()))
+              return {
+                ...ev,
+                range: effectiveEventRange(sessions, ev.startAt, ev.endAt),
+                sessionCount: sessions.length,
+              }
+            }),
+          ),
         )
       } catch (e) {
         setLoadError((e as Error).message)
@@ -141,9 +162,12 @@ export default function HomePage() {
                   <div>
                     <h3>{ev.name}</h3>
                     <p className="muted small" style={{ margin: 0 }}>
-                      {formatDate(ev.startAt, ev.timeZone)} to{' '}
-                      {formatDate(lastDayOf(ev.endAt, ev.timeZone), ev.timeZone)}
+                      {formatDate(ev.range.startAt, ev.timeZone)}
+                      {formatDate(ev.range.startAt, ev.timeZone) !==
+                        formatDate(lastDayOf(ev.range.endAt, ev.timeZone), ev.timeZone) &&
+                        ` to ${formatDate(lastDayOf(ev.range.endAt, ev.timeZone), ev.timeZone)}`}
                       <br />
+                      {ev.sessionCount} session{ev.sessionCount === 1 ? '' : 's'} ·{' '}
                       {ev.timeZone} ({timeZoneLabel(ev.timeZone, ev.startAt)})
                     </p>
                   </div>
@@ -209,30 +233,30 @@ function CreateEventForm({
   const [timeZone, setTimeZone] = useState(deviceTimeZone())
   const initial = useMemo(() => defaultEventWindow(timeZone), [timeZone])
   const [startAt, setStartAt] = useState<number | null>(initial.startAt)
-  const [endAt, setEndAt] = useState<number | null>(initial.endAt)
   const [edited, setEdited] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
 
-  // Changing the time zone should move the untouched defaults with it, so "09:00" stays 09:00
-  // in the newly chosen zone rather than shifting to whatever that instant now reads as.
+  // Changing the time zone should move an untouched default with it, so the chosen day stays
+  // that day in the newly selected zone.
   useEffect(() => {
     if (edited) return
     setStartAt(initial.startAt)
-    setEndAt(initial.endAt)
   }, [initial, edited])
 
   const submit = async () => {
     setProblem(null)
     if (!name.trim()) return setProblem('Give the event a name.')
-    if (startAt === null) return setProblem('Choose the first day.')
-    if (endAt === null) return setProblem('Choose the last day.')
-    if (endAt <= startAt) return setProblem('The last day must not be before the first.')
-    await onCreate({ name: name.trim(), startAt, endAt, timeZone })
+    if (startAt === null) return setProblem('Choose the day the event starts.')
+    // One day to begin with; sessions extend it from there.
+    await onCreate({
+      name: name.trim(),
+      startAt,
+      endAt: endOfDayEpoch(startAt, timeZone),
+      timeZone,
+    })
     setName('')
     setEdited(false)
-    const next = defaultEventWindow(timeZone)
-    setStartAt(next.startAt)
-    setEndAt(next.endAt)
+    setStartAt(defaultEventWindow(timeZone).startAt)
   }
 
   return (
@@ -259,33 +283,20 @@ function CreateEventForm({
           ))}
         </select>
       </div>
-      <div className="fields-2">
-        <DateTimeField
-          id="ev-start"
-          label="First day"
-          value={startAt}
-          timeZone={timeZone}
-          showTime={false}
-          onChange={(v) => {
-            setEdited(true)
-            setStartAt(v === null ? null : startOfDayEpoch(v, timeZone))
-          }}
-        />
-        <DateTimeField
-          id="ev-end"
-          label="Last day"
-          value={endAt === null ? null : lastDayOf(endAt, timeZone)}
-          timeZone={timeZone}
-          showTime={false}
-          onChange={(v) => {
-            setEdited(true)
-            setEndAt(v === null ? null : endOfDayEpoch(v, timeZone))
-          }}
-        />
-      </div>
+      <DateTimeField
+        id="ev-start"
+        label="First day"
+        value={startAt}
+        timeZone={timeZone}
+        showTime={false}
+        onChange={(v) => {
+          setEdited(true)
+          setStartAt(v === null ? null : startOfDayEpoch(v, timeZone))
+        }}
+      />
       <p className="muted small">
-        Pick the days the event covers. There are no start and finish times to set: the schedule
-        follows the sessions, and a session outside these days simply extends the event.
+        Just the day it starts. There is no finish to set: the event grows to cover whatever
+        sessions you add, so a two day agenda makes it a two day event on its own.
       </p>
       {problem && <p className="error small">{problem}</p>}
       <button className="primary" disabled={busy} onClick={() => void submit()}>

@@ -5,6 +5,7 @@ import {
   buildSessionTemplate,
   buildSessionCsv,
   groupIdFromName,
+  isValidEmail,
   parseBool,
   parseCsv,
   parseMemberCsv,
@@ -344,5 +345,28 @@ describe('the shipped example agenda', () => {
   it('every session ends after it starts', () => {
     const { rows } = parseSessionCsv(csv(), SYDNEY)
     for (const r of rows) expect(r.endAt).toBeGreaterThan(r.startAt)
+  })
+})
+
+describe('isValidEmail (US-037: adding a person on the spot)', () => {
+  it('accepts ordinary addresses', () => {
+    expect(isValidEmail('a@x.com')).toBe(true)
+    expect(isValidEmail('first.last+tag@sub.example.co.uk')).toBe(true)
+  })
+
+  it('ignores surrounding whitespace and case', () => {
+    expect(isValidEmail('  A@X.COM  ')).toBe(true)
+  })
+
+  it('rejects what is obviously not an address', () => {
+    for (const bad of ['', '   ', 'nope', 'a@b', 'a b@x.com', '@x.com', 'a@']) {
+      expect(isValidEmail(bad)).toBe(false)
+    }
+  })
+
+  it('agrees with the CSV importer, so both accept the same thing', () => {
+    const { rows, errors } = parseMemberCsv('email,isEventTeamMember\nfirst.last+tag@x.co.uk,false\n')
+    expect(errors).toEqual([])
+    expect(isValidEmail(rows[0].email)).toBe(true)
   })
 })

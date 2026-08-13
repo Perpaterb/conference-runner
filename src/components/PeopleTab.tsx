@@ -11,10 +11,18 @@ import {
   buildMemberCsv,
   downloadText,
   groupIdFromName,
+  isValidEmail,
   parseMemberCsv,
   type RowError,
 } from '../lib/csv'
-import { applyMemberImport, deleteGroup, setGroupMembership, setTeamMember, upsertGroup } from '../lib/data'
+import {
+  addMemberByEmail,
+  applyMemberImport,
+  deleteGroup,
+  setGroupMembership,
+  setTeamMember,
+  upsertGroup,
+} from '../lib/data'
 import { canManageGroup, isTeam, ledGroupIds, membersInAnyGroup } from '../lib/roles'
 import type { EventDoc, GroupDoc, MemberDoc, Role } from '../lib/types'
 import { ConfirmButton, Modal } from './ui'
@@ -61,6 +69,8 @@ export default function PeopleTab({
   const [filter, setFilter] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const [newGroup, setNewGroup] = useState('')
+  const [newPerson, setNewPerson] = useState('')
+  const [adding, setAdding] = useState(false)
   const [hiddenGroups, setHiddenGroups] = useState<Set<string>>(() => loadHiddenGroups(event.id))
   const [onlyShownGroups, setOnlyShownGroups] = useState(false)
 
@@ -94,6 +104,26 @@ export default function PeopleTab({
       .filter((m) => (needle ? m.email.includes(needle) : true))
       .sort((a, b) => a.email.localeCompare(b.email))
   }, [members, team, led, filter, onlyShownGroups, shownGroups])
+
+  const addPerson = async () => {
+    if (!isValidEmail(newPerson)) return
+    setAdding(true)
+    setProblem(null)
+    try {
+      await addMemberByEmail(event.id, newPerson)
+      setNewPerson('')
+    } catch (e) {
+      setProblem((e as Error).message)
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const addGroup = () =>
+    act(async () => {
+      await upsertGroup(event.id, newGroup)
+      setNewGroup('')
+    })
 
   const act = async (fn: () => Promise<void>) => {
     setProblem(null)
@@ -141,6 +171,60 @@ export default function PeopleTab({
 
       {team && (
         <div className="card">
+          <h3>Add on the spot</h3>
+          <div className="fields-2">
+            <div>
+              <label htmlFor="add-person">Add a person by email</label>
+              <div className="row" style={{ flexWrap: 'nowrap' }}>
+                <input
+                  id="add-person"
+                  value={newPerson}
+                  placeholder="someone@example.com"
+                  onChange={(e) => setNewPerson(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addPerson()}
+                />
+                <button
+                  className="primary"
+                  disabled={!isValidEmail(newPerson) || adding}
+                  onClick={() => void addPerson()}
+                >
+                  {adding ? 'Adding…' : 'Add'}
+                </button>
+              </div>
+              <p className="muted small" style={{ marginTop: '0.3rem', marginBottom: 0 }}>
+                No group needed. They can be placed in the table below, before or after they ever
+                sign in.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="add-group">Add a group</label>
+              <div className="row" style={{ flexWrap: 'nowrap' }}>
+                <input
+                  id="add-group"
+                  placeholder="Platform"
+                  value={newGroup}
+                  onChange={(e) => setNewGroup(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && newGroup.trim() && addGroup()}
+                />
+                <button
+                  className="primary"
+                  disabled={!newGroup.trim()}
+                  onClick={() => void addGroup()}
+                >
+                  Add
+                </button>
+              </div>
+              <p className="muted small" style={{ marginTop: '0.3rem', marginBottom: 0 }}>
+                It appears as a column in the table below straight away.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {team && (
+        <div className="card">
           <h3>Groups</h3>
           <div className="row">
             {groups.length === 0 && <span className="muted small">No groups yet.</span>}
@@ -155,25 +239,6 @@ export default function PeopleTab({
                 />
               </span>
             ))}
-          </div>
-          <div className="row" style={{ marginTop: '0.6rem' }}>
-            <input
-              style={{ maxWidth: 260 }}
-              placeholder="New group name"
-              value={newGroup}
-              onChange={(e) => setNewGroup(e.target.value)}
-            />
-            <button
-              disabled={!newGroup.trim()}
-              onClick={() =>
-                void act(async () => {
-                  await upsertGroup(event.id, newGroup)
-                  setNewGroup('')
-                })
-              }
-            >
-              Add group
-            </button>
           </div>
         </div>
       )}

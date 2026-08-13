@@ -62,9 +62,10 @@ console.
 
 ### US-010 Owner creates an event
 - [~] Google sign-in on the home page
-- [x] An event is a set of **days**, not a pair of clock times: the owner picks a first and last
-      day plus the time zone
-- [x] Defaults to today and tomorrow, as whole days
+- [x] An event is a set of **days**, not a pair of clock times
+- [x] Creation asks only for the day it starts; there is no finish to set, because the event
+      grows to cover whatever sessions are added
+- [x] Defaults to today
 - [x] A session outside those days extends the schedule rather than conflicting with it, so an
       import can never disagree with the event window
 - [x] Dates display as DD MMM YYYY, never US ordering
@@ -97,10 +98,21 @@ console.
 - [x] Keeps following the OS if that setting changes while the page is open
 - [~] Every colour is defined in both palettes, with no dark value left on a light background
 
+### US-037 Add a person, group or session on the spot
+- [~] An event team member can add a person by email alone, with no group required
+- [x] The same email validation as the CSV importer, so both accept the same thing
+- [~] Adding someone who is already on the event reports it rather than overwriting them
+- [~] A person added this way exists before they ever sign in, so they can be grouped and
+      addressed in advance
+- [~] Adding a group is a single field, and the group appears as a table column immediately
+- [~] Adding a session is the existing "New session" button on the Sessions tab
+
 ### US-013 Owner event list
 - [~] From an event page, the owner has a "My events" link back to the creation page, top right
 - [~] Only the owner sees it; nobody else can create events
 - [~] Owner sees all events they own and can reopen any
+- [~] Each card shows the days its sessions actually cover, widening as sessions are added, plus
+      the session count
 - [~] Each event has a Delete button, gated on typing the event name
 - [~] Deleting removes the sessions, content, groups, members and requests underneath, not just
       the event document

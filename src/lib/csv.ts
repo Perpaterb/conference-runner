@@ -88,6 +88,11 @@ export function parseBool(value: string | undefined): boolean {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/** Shared by the CSV importer and the add-a-person field, so both accept the same thing. */
+export function isValidEmail(email: string): boolean {
+  return EMAIL_RE.test(email.trim().toLowerCase())
+}
+
 export function normaliseEmail(email: string): string {
   return email.trim().toLowerCase()
 }

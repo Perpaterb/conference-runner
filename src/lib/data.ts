@@ -301,6 +301,29 @@ export async function ensureMemberRecord(
   })
 }
 
+/**
+ * Adds someone by email alone (US-037).
+ *
+ * They land with no groups, which is the "logged in" state: they see their email and that they
+ * are in no groups until somebody places them. The record exists before they ever sign in, so
+ * the team can put them in a group and address them in advance.
+ */
+export async function addMemberByEmail(eventId: string, email: string): Promise<void> {
+  const memberRef = doc(db(), paths.member(eventId, email))
+  const existing = await getDoc(memberRef)
+  if (existing.exists()) {
+    throw new Error(`${email.trim().toLowerCase()} is already on this event.`)
+  }
+  await setDoc(memberRef, {
+    email: email.trim().toLowerCase(),
+    isTeamMember: false,
+    groups: {},
+    isLeader: false,
+    ledGroupIds: [],
+    addedAt: Date.now(),
+  })
+}
+
 export async function upsertGroup(eventId: string, name: string): Promise<string> {
   const id = groupIdFromName(name)
   await setDoc(doc(db(), paths.group(eventId, id)), { name: name.trim() }, { merge: true })
