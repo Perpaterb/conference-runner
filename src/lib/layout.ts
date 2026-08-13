@@ -55,49 +55,192 @@ export function layoutSessions(sessions: SessionDoc[]): PlacedSession[] {
   return placed
 }
 
-export interface Gap {
+// ---------------------------------------------------------------------------
+// Non-linear time scale
+// ---------------------------------------------------------------------------
+
+/**
+ * A fixed pixels-per-minute strip wastes enormous vertical space on the hours when nothing is
+ * happening, and an overnight gap pushes the next day off the bottom of the screen entirely.
+ *
+ * So the scale is piecewise linear instead: stretches where this person has something on are
+ * drawn at full size, and stretches where they have nothing are compressed to roughly an hour
+ * per tick. Because the busy stretches depend on which sessions this person can see, the scale
+ * differs from one attendee to the next, and the now-line has to be positioned through the same
+ * mapping rather than by a fixed distance per hour.
+ */
+
+/** Full-size scale inside a busy stretch. */
+export const BUSY_PIXELS_PER_MINUTE = 2
+/** Compressed scale where nothing is scheduled. */
+export const EMPTY_PIXELS_PER_HOUR = 22
+/** A busy stretch never gets smaller than this, so a five-minute session stays readable. */
+export const MIN_BUSY_SEGMENT_PX = 52
+/** An empty stretch never grows past this, so an overnight gap cannot dominate the page. */
+export const MAX_EMPTY_SEGMENT_PX = 190
+/** ...nor shrink below this, so it stays visible as a break in the day. */
+export const MIN_EMPTY_SEGMENT_PX = 16
+
+export interface ScaleSegment {
+  startAt: number
+  endAt: number
+  /** True when this person has at least one session running through it. */
+  busy: boolean
+  top: number
+  height: number
+}
+
+export interface TimeScale {
+  startAt: number
+  endAt: number
+  segments: ScaleSegment[]
+  totalHeight: number
+}
+
+export interface Interval {
   startAt: number
   endAt: number
 }
 
-/**
- * Stretches of the event with no session at all for this attendee. Used to render the
- * "nothing scheduled" background text.
- */
-export function findGaps(sessions: SessionDoc[], eventStart: number, eventEnd: number): Gap[] {
-  if (eventEnd <= eventStart) return []
-  const ordered = [...sessions].sort((a, b) => a.startAt - b.startAt)
-  const gaps: Gap[] = []
-  let cursor = eventStart
-
-  for (const session of ordered) {
-    if (session.endAt <= cursor) continue
-    if (session.startAt > cursor) {
-      gaps.push({ startAt: cursor, endAt: Math.min(session.startAt, eventEnd) })
+/** Overlapping and touching intervals collapse into one. */
+export function mergeIntervals(intervals: Interval[]): Interval[] {
+  const sorted = [...intervals]
+    .filter((i) => i.endAt > i.startAt)
+    .sort((a, b) => a.startAt - b.startAt)
+  const merged: Interval[] = []
+  for (const next of sorted) {
+    const last = merged[merged.length - 1]
+    if (last && next.startAt <= last.endAt) {
+      last.endAt = Math.max(last.endAt, next.endAt)
+    } else {
+      merged.push({ ...next })
     }
-    cursor = Math.max(cursor, session.endAt)
-    if (cursor >= eventEnd) break
   }
-  if (cursor < eventEnd) gaps.push({ startAt: cursor, endAt: eventEnd })
+  return merged
+}
 
-  return gaps.filter((g) => g.endAt > g.startAt)
+export interface ScaleOptions {
+  busyPixelsPerMinute?: number
+  emptyPixelsPerHour?: number
+  minBusySegmentPx?: number
+  maxEmptySegmentPx?: number
+  minEmptySegmentPx?: number
 }
 
 /**
- * The timeline is a fixed pixels-per-minute strip, so an epoch maps to a vertical offset.
- * Kept here rather than in the component so it can be tested.
+ * Builds the scale for one person's schedule.
+ *
+ * The range is widened to cover any session falling outside the event's own start and end, so a
+ * session scheduled slightly outside the window is still reachable rather than clipped off the
+ * top or bottom.
  */
-export function offsetForEpoch(epoch: number, eventStart: number, pixelsPerMinute: number): number {
-  return ((epoch - eventStart) / 60000) * pixelsPerMinute
+export function buildTimeScale(
+  sessions: SessionDoc[],
+  rangeStart: number,
+  rangeEnd: number,
+  options: ScaleOptions = {},
+): TimeScale {
+  const busyPpm = options.busyPixelsPerMinute ?? BUSY_PIXELS_PER_MINUTE
+  const emptyPph = options.emptyPixelsPerHour ?? EMPTY_PIXELS_PER_HOUR
+  const minBusy = options.minBusySegmentPx ?? MIN_BUSY_SEGMENT_PX
+  const maxEmpty = options.maxEmptySegmentPx ?? MAX_EMPTY_SEGMENT_PX
+  const minEmpty = options.minEmptySegmentPx ?? MIN_EMPTY_SEGMENT_PX
+
+  const startAt = Math.min(rangeStart, ...sessions.map((s) => s.startAt))
+  const endAt = Math.max(rangeEnd, ...sessions.map((s) => s.endAt))
+  if (!Number.isFinite(startAt) || !Number.isFinite(endAt) || endAt <= startAt) {
+    return { startAt: rangeStart, endAt: rangeEnd, segments: [], totalHeight: 0 }
+  }
+
+  const busy = mergeIntervals(sessions).map((i) => ({
+    startAt: Math.max(i.startAt, startAt),
+    endAt: Math.min(i.endAt, endAt),
+  }))
+
+  const segments: ScaleSegment[] = []
+  let cursor = startAt
+  const pushSegment = (from: number, to: number, isBusy: boolean) => {
+    if (to <= from) return
+    const minutes = (to - from) / 60000
+    const height = isBusy
+      ? Math.max(minutes * busyPpm, minBusy)
+      : Math.min(Math.max((minutes / 60) * emptyPph, minEmpty), maxEmpty)
+    segments.push({ startAt: from, endAt: to, busy: isBusy, top: 0, height })
+  }
+
+  for (const interval of busy) {
+    if (interval.endAt <= cursor) continue
+    pushSegment(cursor, interval.startAt, false)
+    pushSegment(Math.max(cursor, interval.startAt), interval.endAt, true)
+    cursor = Math.max(cursor, interval.endAt)
+  }
+  pushSegment(cursor, endAt, false)
+
+  let top = 0
+  for (const segment of segments) {
+    segment.top = top
+    top += segment.height
+  }
+
+  return { startAt, endAt, segments, totalHeight: top }
 }
 
-export function heightForRange(
+/** Vertical position of an instant, through the compressed scale. */
+export function yForEpoch(scale: TimeScale, epoch: number): number {
+  if (scale.segments.length === 0) return 0
+  if (epoch <= scale.startAt) return 0
+  if (epoch >= scale.endAt) return scale.totalHeight
+
+  for (const segment of scale.segments) {
+    if (epoch >= segment.startAt && epoch <= segment.endAt) {
+      const span = segment.endAt - segment.startAt
+      if (span <= 0) return segment.top
+      return segment.top + ((epoch - segment.startAt) / span) * segment.height
+    }
+  }
+  return scale.totalHeight
+}
+
+/** Height of a span measured through the scale, never smaller than `minimum`. */
+export function spanHeight(
+  scale: TimeScale,
   startAt: number,
   endAt: number,
-  pixelsPerMinute: number,
-  minimum = 44,
+  minimum = 40,
 ): number {
-  return Math.max(((endAt - startAt) / 60000) * pixelsPerMinute, minimum)
+  return Math.max(yForEpoch(scale, endAt) - yForEpoch(scale, startAt), minimum)
+}
+
+export interface HourTick {
+  epoch: number
+  y: number
+  /** Midnight: the component renders the date rather than just the time. */
+  isDayStart: boolean
+}
+
+/**
+ * Hour marks down the axis, thinned out so labels never collide once a stretch is compressed.
+ * Midnight is always kept, so a new day is never unlabelled.
+ */
+export function hourTicks(
+  scale: TimeScale,
+  isDayStart: (epoch: number) => boolean,
+  minGapPx = 18,
+): HourTick[] {
+  if (scale.segments.length === 0) return []
+  const HOUR = 3_600_000
+  const ticks: HourTick[] = []
+  let lastY = -Infinity
+
+  const first = Math.ceil(scale.startAt / HOUR) * HOUR
+  for (let epoch = first; epoch <= scale.endAt; epoch += HOUR) {
+    const y = yForEpoch(scale, epoch)
+    const dayStart = isDayStart(epoch)
+    if (!dayStart && y - lastY < minGapPx) continue
+    ticks.push({ epoch, y, isDayStart: dayStart })
+    lastY = y
+  }
+  return ticks
 }
 
 export type EventPhase = 'before' | 'during' | 'after'

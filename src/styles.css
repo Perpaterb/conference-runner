@@ -392,24 +392,61 @@ label {
 
 .timeline {
   position: relative;
-  margin-left: 62px;
+  margin-left: 86px;
 }
 
 .hour-line {
   position: absolute;
-  left: -62px;
+  left: -86px;
   right: 0;
   border-top: 1px solid var(--grid-line);
   pointer-events: none;
 }
 
+/* Midnight gets a heavier rule and the date rather than the time. */
+.hour-line.day-start {
+  border-top: 2px solid var(--accent);
+  opacity: 0.85;
+}
+
 .hour-label {
   position: absolute;
-  left: -58px;
-  top: -0.6em;
+  left: -82px;
+  top: -0.65em;
+  width: 76px;
   font-size: 0.72rem;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  background: var(--bg);
+  padding-right: 4px;
+}
+
+.hour-line.day-start .hour-label {
+  color: var(--text);
+  font-size: 0.75rem;
+}
+
+/*
+ * A stretch with nothing on for this person. It is drawn at a compressed scale, so the shading
+ * is what tells the reader the axis is not uniform here.
+ */
+.quiet-band {
+  position: absolute;
+  left: -86px;
+  right: 0;
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    color-mix(in srgb, var(--muted) 8%, transparent) 8px,
+    color-mix(in srgb, var(--muted) 8%, transparent) 16px
+  );
+  color: var(--gap-text);
+  font-size: 0.8rem;
+  font-style: italic;
+  pointer-events: none;
 }
 
 .session-card {
@@ -461,7 +498,7 @@ label {
 /* The now line sits above every card (US-053). */
 .now-line {
   position: absolute;
-  left: -62px;
+  left: -86px;
   right: 0;
   z-index: 30;
   pointer-events: none;

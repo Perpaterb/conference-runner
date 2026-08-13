@@ -104,6 +104,11 @@ events/{eventId}                              eventId is the 10-character link s
 cannot rewrite unknown paths to `index.html`, so a plain path would 404 on a hard refresh. The
 hash makes deep links work with no redirect hack.
 
+**The schedule's vertical scale is not uniform.** Stretches where you have something on are
+drawn at full size; stretches where you have nothing are compressed to about an hour per tick, so
+a two-day agenda with an overnight gap fits on one screen. The scale therefore differs per
+attendee, and the now-line is positioned through the same mapping rather than by arithmetic.
+
 **Times are stored as epoch milliseconds and displayed in the event's zone.** Positioning maths
 is zone independent; only labels are formatted, always in the owner's chosen zone rather than the
 device's. Date pickers show the event's wall clock for the same reason.
@@ -128,7 +133,7 @@ live / polling / offline indicator.
 ## Testing
 
 ```bash
-npm test                     # 169 unit and component tests
+npm test                     # 194 unit and component tests
 npm run test:rules           # 57 security rules tests against a Firestore emulator
 npm run test:verify-fails    # proves the suite catches broken logic
 npm run story-coverage       # which user stories have automated coverage
@@ -145,7 +150,7 @@ fail is not a check.
 `scripts/verify-rules-tests-fail.sh` proves that suite has teeth by opening seven deliberate
 security holes and checking each one turns it red.
 
-`story-coverage` reports honestly. At the time of writing it is **28 of 39 stories (72%)**. The
+`story-coverage` reports honestly. At the time of writing it is **29 of 40 stories (73%)**. The
 uncovered ones need a signed-in browser against a real Firebase project, which the unit suite
 cannot reach, so they are listed as needing manual verification rather than quietly assumed to
 work. `smoke.sh` verifies a deployment is reachable, built correctly and wired to Firebase; it

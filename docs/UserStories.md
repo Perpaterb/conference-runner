@@ -13,7 +13,7 @@ Google Auth) as the live backend.
 
 The distinction is deliberate. Most of the `[~]` items need a signed-in browser talking to a real
 Firebase project, which the unit suite cannot reach. `npm run story-coverage` prints the same
-split. Current automated story coverage: **28 of 39 (72%)**.
+split. Current automated story coverage: **29 of 40 (73%)**.
 
 ---
 
@@ -245,9 +245,21 @@ console.
 - [~] During the event the view snaps so the line sits one quarter from the top
 - [~] Snapping stops the moment the user scrolls, and a "Now" button re-enables it
 
-### US-054 Empty time text
-- [x] Stretches with no session show "Nothing scheduled for you"
-- [x] No such note appears when sessions cover the event
+### US-054 Empty time and a compressed scale
+- [x] Stretches with no session show "Nothing scheduled for you" on a shaded band
+- [x] No such band appears when sessions cover the event
+- [x] Empty stretches are compressed to roughly an hour per tick rather than drawn to scale
+- [x] A long overnight gap is capped so it cannot dominate the page
+- [x] A very short session stays tall enough to read
+- [x] The mapping is monotonic and differs per person, since it follows their own sessions
+- [x] The now-line is positioned through the same mapping, not by a fixed distance per hour
+- [~] Compressed bands are shaded so it is visible that the scale is not uniform
+
+### US-058 Date and time axis
+- [x] Hour marks run down the side of the schedule
+- [x] Midnight shows the date and a heavier rule, so a new day is never unlabelled
+- [x] Ticks thin out where the scale is compressed, so labels never collide
+- [x] Sessions outside the event's own start and end are still reachable rather than clipped
 
 ### US-055 Session detail
 - [~] Tapping a session opens its content
@@ -270,6 +282,8 @@ console.
 - [~] A team member can toggle into the plain attendee experience, live
 
 ### US-061 Impersonate attendee mode
+- [x] A team member sees "Sees N of M sessions" plus that person's groups, so a short schedule
+      is obviously group filtering rather than a fault
 - [~] Pick any attendee and see their schedule, content and requests
 - [x] Impersonation is read only: acknowledging a request is disabled
 - [~] A persistent banner shows who is being impersonated and how to exit

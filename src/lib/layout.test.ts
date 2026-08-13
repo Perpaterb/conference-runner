@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { eventPhase, findGaps, heightForRange, layoutSessions, offsetForEpoch } from './layout'
+import {
+  MAX_EMPTY_SEGMENT_PX,
+  MIN_BUSY_SEGMENT_PX,
+  buildTimeScale,
+  eventPhase,
+  hourTicks,
+  layoutSessions,
+  mergeIntervals,
+  spanHeight,
+  yForEpoch,
+} from './layout'
 import type { SessionDoc } from './types'
 
 const MIN = 60_000
@@ -63,42 +73,174 @@ describe('layoutSessions (US-052)', () => {
   })
 })
 
-describe('findGaps (US-054)', () => {
-  it('finds the stretch before, between and after sessions', () => {
-    const gaps = findGaps([session('a', 60, 120)], 0, 180 * MIN)
-    expect(gaps).toEqual([
-      { startAt: 0, endAt: 60 * MIN },
-      { startAt: 120 * MIN, endAt: 180 * MIN },
-    ])
+describe('buildTimeScale: compressed empty time (US-054)', () => {
+  const HOUR = 60 * MIN
+
+  it('draws busy stretches at full size and empty ones compressed', () => {
+    // 09:00-10:00 busy, then three empty hours.
+    const scale = buildTimeScale([session('a', 0, 60)], 0, 4 * 60 * MIN)
+    const [busy, empty] = scale.segments
+
+    expect(busy.busy).toBe(true)
+    expect(busy.height).toBe(120) // 60 min at 2px
+    expect(empty.busy).toBe(false)
+    expect(empty.height).toBe(66) // 3 hours at 22px, not 360
+    expect(empty.height).toBeLessThan(busy.height)
   })
 
-  it('reports the whole event as a gap when nothing is scheduled', () => {
-    expect(findGaps([], 0, 60 * MIN)).toEqual([{ startAt: 0, endAt: 60 * MIN }])
+  it('keeps a long overnight gap from dominating the page', () => {
+    const scale = buildTimeScale([session('a', 0, 60)], 0, 24 * 60 * MIN)
+    const overnight = scale.segments.find((s) => !s.busy)!
+    expect(overnight.height).toBeLessThanOrEqual(MAX_EMPTY_SEGMENT_PX)
   })
 
-  it('reports no gaps when sessions cover the event', () => {
-    expect(findGaps([session('a', 0, 60)], 0, 60 * MIN)).toEqual([])
+  it('keeps a very short session readable', () => {
+    const scale = buildTimeScale([session('a', 0, 5)], 0, 5 * MIN)
+    expect(scale.segments[0].height).toBe(MIN_BUSY_SEGMENT_PX)
   })
 
-  it('does not report a gap inside overlapping sessions', () => {
-    const gaps = findGaps([session('a', 0, 60), session('b', 30, 120)], 0, 120 * MIN)
-    expect(gaps).toEqual([])
+  it('treats overlapping sessions as one busy stretch', () => {
+    const scale = buildTimeScale([session('a', 0, 60), session('b', 30, 90)], 0, 90 * MIN)
+    expect(scale.segments.filter((s) => s.busy)).toHaveLength(1)
+    expect(scale.segments[0].height).toBe(180) // 90 minutes, not 120 + 120
   })
 
-  it('ignores sessions that fall outside the event window', () => {
-    const gaps = findGaps([session('early', -120, -60)], 0, 60 * MIN)
-    expect(gaps).toEqual([{ startAt: 0, endAt: 60 * MIN }])
+  it('leaves no empty segment when sessions cover the range', () => {
+    const scale = buildTimeScale([session('a', 0, 60)], 0, 60 * MIN)
+    expect(scale.segments.every((s) => s.busy)).toBe(true)
+  })
+
+  it('is one long empty stretch when nothing is scheduled', () => {
+    const scale = buildTimeScale([], 0, 8 * HOUR)
+    expect(scale.segments).toHaveLength(1)
+    expect(scale.segments[0].busy).toBe(false)
+  })
+
+  it('widens the range to reach a session outside the event window', () => {
+    // Without this, a session before the event start would be clipped off the top and the
+    // attendee would simply never see it.
+    const scale = buildTimeScale([session('early', -120, -60)], 0, 60 * MIN)
+    expect(scale.startAt).toBe(-120 * MIN)
+    expect(yForEpoch(scale, -90 * MIN)).toBeGreaterThan(0)
+  })
+
+  it('reaches a session that runs past the event end', () => {
+    const scale = buildTimeScale([session('late', 60, 240)], 0, 60 * MIN)
+    expect(scale.endAt).toBe(240 * MIN)
+  })
+
+  it('survives an empty event window', () => {
+    const scale = buildTimeScale([], 0, 0)
+    expect(scale.segments).toEqual([])
+    expect(scale.totalHeight).toBe(0)
   })
 })
 
-describe('positioning', () => {
-  it('maps time to a vertical offset', () => {
-    expect(offsetForEpoch(30 * MIN, 0, 2)).toBe(60)
+describe('yForEpoch', () => {
+  const scale = buildTimeScale([session('a', 0, 60), session('b', 240, 300)], 0, 300 * MIN)
+
+  it('is monotonic: later never sits above earlier', () => {
+    let previous = -1
+    for (let m = 0; m <= 300; m += 5) {
+      const y = yForEpoch(scale, m * MIN)
+      expect(y).toBeGreaterThanOrEqual(previous)
+      previous = y
+    }
   })
 
-  it('keeps very short sessions tall enough to read', () => {
-    expect(heightForRange(0, 5 * MIN, 2, 44)).toBe(44)
-    expect(heightForRange(0, 60 * MIN, 2, 44)).toBe(120)
+  it('pins the ends of the range', () => {
+    expect(yForEpoch(scale, 0)).toBe(0)
+    expect(yForEpoch(scale, 300 * MIN)).toBe(scale.totalHeight)
+  })
+
+  it('clamps outside the range rather than running off the page', () => {
+    expect(yForEpoch(scale, -999 * MIN)).toBe(0)
+    expect(yForEpoch(scale, 9999 * MIN)).toBe(scale.totalHeight)
+  })
+
+  it('moves further per minute inside a busy stretch than an empty one', () => {
+    const busyRate = yForEpoch(scale, 30 * MIN) - yForEpoch(scale, 20 * MIN)
+    const emptyRate = yForEpoch(scale, 130 * MIN) - yForEpoch(scale, 120 * MIN)
+    expect(busyRate).toBeGreaterThan(emptyRate)
+  })
+
+  it('puts the now-line inside the session that is running', () => {
+    // The red line must land within the card it overlaps, which is the whole point of routing
+    // it through the same scale.
+    const y = yForEpoch(scale, 30 * MIN)
+    expect(y).toBeGreaterThan(yForEpoch(scale, 0))
+    expect(y).toBeLessThan(yForEpoch(scale, 60 * MIN))
+  })
+
+  it('gives a different mapping for a different person’s schedule', () => {
+    const other = buildTimeScale([session('c', 120, 180)], 0, 300 * MIN)
+    expect(yForEpoch(other, 150 * MIN)).not.toBe(yForEpoch(scale, 150 * MIN))
+  })
+})
+
+describe('spanHeight', () => {
+  const scale = buildTimeScale([session('a', 0, 60)], 0, 120 * MIN)
+
+  it('measures a session through the scale', () => {
+    expect(spanHeight(scale, 0, 60 * MIN)).toBe(120)
+  })
+
+  it('never returns less than the minimum', () => {
+    expect(spanHeight(scale, 0, 1 * MIN, 40)).toBe(40)
+  })
+})
+
+describe('hourTicks: the date and time axis (US-058)', () => {
+  const midnightAt = (epoch: number) => epoch % (24 * 60 * MIN) === 0
+
+  it('marks every hour when there is room', () => {
+    const scale = buildTimeScale([session('a', 0, 180)], 0, 180 * MIN)
+    const ticks = hourTicks(scale, () => false)
+    expect(ticks.map((t) => t.epoch)).toEqual([0, 60 * MIN, 120 * MIN, 180 * MIN])
+  })
+
+  it('thins the ticks out where the scale is compressed, so labels do not collide', () => {
+    const scale = buildTimeScale([], 0, 24 * 60 * MIN)
+    const ticks = hourTicks(scale, () => false, 18)
+    expect(ticks.length).toBeLessThan(24)
+  })
+
+  it('always keeps midnight, so a new day is never unlabelled', () => {
+    const scale = buildTimeScale([], 0, 48 * 60 * MIN)
+    const ticks = hourTicks(scale, midnightAt, 18)
+    expect(ticks.some((t) => t.isDayStart)).toBe(true)
+  })
+
+  it('returns nothing for an empty scale', () => {
+    expect(hourTicks(buildTimeScale([], 0, 0), () => false)).toEqual([])
+  })
+})
+
+describe('mergeIntervals', () => {
+  it('merges overlapping and touching intervals', () => {
+    expect(
+      mergeIntervals([
+        { startAt: 0, endAt: 10 },
+        { startAt: 5, endAt: 20 },
+        { startAt: 20, endAt: 30 },
+      ]),
+    ).toEqual([{ startAt: 0, endAt: 30 }])
+  })
+
+  it('keeps separated intervals apart', () => {
+    expect(
+      mergeIntervals([
+        { startAt: 0, endAt: 10 },
+        { startAt: 20, endAt: 30 },
+      ]),
+    ).toEqual([
+      { startAt: 0, endAt: 10 },
+      { startAt: 20, endAt: 30 },
+    ])
+  })
+
+  it('drops zero-length intervals', () => {
+    expect(mergeIntervals([{ startAt: 5, endAt: 5 }])).toEqual([])
   })
 })
 

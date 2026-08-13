@@ -223,3 +223,100 @@ describe('US-072: attendance request pop-up', () => {
     expect(screen.getByRole('button', { name: /I'll be there/ })).toBeDisabled()
   })
 })
+
+describe('US-061: what a team member sees while impersonating', () => {
+  const sessions = [
+    session({ id: 'plenary', title: 'Opening plenary', allGroups: true }),
+    session({
+      id: 'plat',
+      title: 'Platform breakout',
+      groupIds: ['platform'],
+      allGroups: false,
+      startAt: at(11),
+      endAt: at(12),
+    }),
+    session({
+      id: 'design',
+      title: 'Design breakout',
+      groupIds: ['design'],
+      allGroups: false,
+      startAt: at(13),
+      endAt: at(14),
+    }),
+  ]
+
+  it('reports how much of the agenda that person actually gets', () => {
+    vi.setSystemTime(at(10))
+    renderView({
+      member: member({ platform: { leader: false } }),
+      sessions,
+      showCoverage: true,
+    })
+
+    expect(screen.getByText('Sees 2 of 3 sessions')).toBeInTheDocument()
+    expect(screen.getByText(/Group: platform/)).toBeInTheDocument()
+  })
+
+  it('shows every session when the person is in every relevant group', () => {
+    vi.setSystemTime(at(10))
+    renderView({
+      member: member({ platform: { leader: false }, design: { leader: false } }),
+      sessions,
+      showCoverage: true,
+    })
+
+    expect(screen.getByText('Sees 3 of 3 sessions')).toBeInTheDocument()
+    expect(screen.getByText('Platform breakout')).toBeInTheDocument()
+    expect(screen.getByText('Design breakout')).toBeInTheDocument()
+  })
+
+  it('explains an empty schedule rather than looking broken', () => {
+    vi.setSystemTime(at(10))
+    renderView({ member: member(), sessions, showCoverage: true })
+
+    expect(screen.getByText('Sees 0 of 3 sessions')).toBeInTheDocument()
+    expect(screen.getByText('You are not in any groups')).toBeInTheDocument()
+  })
+
+  it('says nothing about coverage for an ordinary attendee', () => {
+    vi.setSystemTime(at(10))
+    renderView({ member: member({ platform: { leader: false } }), sessions })
+    expect(screen.queryByText(/Sees \d+ of/)).not.toBeInTheDocument()
+  })
+})
+
+describe('sessions outside the event window', () => {
+  it('still renders a session that starts before the event does', () => {
+    // Previously the timeline ran strictly from event start to event end, so a session outside
+    // that window was positioned off the strip and simply never appeared.
+    vi.setSystemTime(at(10))
+    renderView({
+      sessions: [session({ id: 'early', title: 'Early setup', startAt: at(7), endAt: at(8) })],
+    })
+    expect(screen.getByText('Early setup')).toBeInTheDocument()
+  })
+
+  it('still renders a session that runs past the event end', () => {
+    vi.setSystemTime(at(10))
+    renderView({
+      sessions: [session({ id: 'late', title: 'Late retro', startAt: at(18), endAt: at(19) })],
+    })
+    expect(screen.getByText('Late retro')).toBeInTheDocument()
+  })
+})
+
+describe('the time axis', () => {
+  it('runs hour labels down the side', () => {
+    vi.setSystemTime(at(10))
+    renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(12) })] })
+    for (const label of ['10:00', '11:00', '12:00']) {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0)
+    }
+  })
+
+  it('marks a quiet stretch instead of leaving dead space', () => {
+    vi.setSystemTime(at(10))
+    renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(10) })] })
+    expect(screen.getAllByText('Nothing scheduled for you').length).toBeGreaterThan(0)
+  })
+})

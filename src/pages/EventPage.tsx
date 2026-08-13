@@ -204,6 +204,7 @@ function EventShell({
           requests={requests.data}
           viewerEmail={impersonating ? impersonating.email : email}
           readOnly={impersonating !== null}
+          showCoverage={team}
         />
       ) : (
         <TeamConsole

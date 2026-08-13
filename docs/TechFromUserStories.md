@@ -202,10 +202,22 @@ Files: `src/components/SessionsTab.tsx`, `src/components/ContentEditor.tsx`,
 
 ### US-050 to US-055
 
-The timeline is a fixed pixels-per-minute strip from event start to event end. Position maths uses
-epoch milliseconds, so it is time zone independent; only labels are formatted, always in the
-event's zone. `datetime-local` inputs are fed the event's wall clock rather than the browser's,
-which is the subtle part of US-050.
+The vertical scale is **piecewise linear, not uniform**. A fixed pixels-per-minute strip wasted
+enormous space on quiet hours and pushed day two off the bottom of the screen. `buildTimeScale`
+merges the sessions this person can see into busy intervals, draws those at 2px per minute, and
+compresses everything else to about 22px per hour, capped so an overnight gap cannot dominate.
+`yForEpoch` maps an instant through those segments, so the now-line lands correctly without any
+arithmetic of its own; positioning it by a fixed distance per hour would put it in the wrong
+place entirely. Because busy stretches come from *this person's* sessions, the scale differs
+from one attendee to the next.
+
+The range is widened to cover any session falling outside the event's own start and end. Before
+that, such a session was positioned off the strip and never appeared, which is one explanation
+for sessions seeming to go missing.
+
+Position maths uses epoch milliseconds, so it is time zone independent; only labels are
+formatted, always in the event's zone. `datetime-local` inputs are fed the event's wall clock
+rather than the browser's, which is the subtle part of US-050.
 
 Overlap layout groups sessions into clusters of transitively overlapping items and assigns each
 the first free column; every session in a cluster reports the same column count so widths line up.
@@ -218,7 +230,20 @@ top, off the moment the user scrolls, back on via the "Now" button. Smooth-scrol
 ignored for 800ms so the programmatic scroll does not read as the user taking over. This is what
 keeps the schedule scrollable.
 
-Files: `src/lib/layout.ts`, `src/lib/time.ts`, `src/components/AttendeeView.tsx`,
+### US-058 The axis
+
+`hourTicks` walks the scale hour by hour and drops any tick that would land within 18px of the
+previous one, so labels stay legible where the scale is compressed. Midnight is always kept and
+renders the date with a heavier rule.
+
+### US-061 Coverage indicator
+
+While previewing or impersonating, a team member sees "Sees N of M sessions" and the person's
+groups. A short schedule is usually correct group filtering rather than a fault, and there was
+previously no way to tell those apart from the inside.
+
+Files: `src/lib/layout.ts`, `src/components/Timeline.tsx`, `src/lib/time.ts`,
+`src/components/AttendeeView.tsx`,
 `src/styles.css`, `src/lib/layout.test.ts`, `src/lib/time.test.ts`,
 `src/components/AttendeeView.test.tsx`
 
@@ -270,7 +295,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-169 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+194 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

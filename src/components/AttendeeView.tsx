@@ -1,36 +1,21 @@
 /**
  * The attendee experience (US-050 to US-057).
  *
- * The timeline is a fixed pixels-per-minute strip running from the event start to the event end,
- * so vertical position maps directly to time. All positioning uses epoch milliseconds, which is
- * time zone independent; only the labels are formatted in the event's zone.
+ * This decides what one person can see and hands it to the Timeline, which owns the layout.
+ * All positioning uses epoch milliseconds, which is time zone independent; only the labels are
+ * formatted, always in the event's zone.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import {
-  eventPhase,
-  findGaps,
-  heightForRange,
-  layoutSessions,
-  offsetForEpoch,
-} from '../lib/layout'
+import { useEffect, useState } from 'react'
+import { eventPhase } from '../lib/layout'
 import { dueRequestsFor, visibleSessions } from '../lib/roles'
 import { useNow } from '../lib/live'
-import {
-  formatDate,
-  formatDateTime,
-  formatTime,
-  humaniseMinutes,
-  minutesUntil,
-  timeZoneLabel,
-} from '../lib/time'
+import { formatDateTime } from '../lib/time'
 import { acknowledgeRequest } from '../lib/data'
 import type { EventDoc, GroupDoc, MemberDoc, RequestDoc, SessionDoc } from '../lib/types'
 import { Modal } from './ui'
 import SessionDetail from './SessionDetail'
-
-const PIXELS_PER_MINUTE = 2
-const HOUR_MS = 3_600_000
+import Timeline from './Timeline'
 
 export default function AttendeeView({
   event,
@@ -40,6 +25,7 @@ export default function AttendeeView({
   requests,
   viewerEmail,
   readOnly,
+  showCoverage = false,
 }: {
   event: EventDoc
   member: MemberDoc | undefined
@@ -48,6 +34,8 @@ export default function AttendeeView({
   requests: RequestDoc[]
   viewerEmail: string
   readOnly: boolean
+  /** Team members previewing or impersonating see how much of the agenda this person gets. */
+  showCoverage?: boolean
 }) {
   const now = useNow(15_000)
   const [openSession, setOpenSession] = useState<SessionDoc | null>(null)
@@ -62,6 +50,9 @@ export default function AttendeeView({
       <>
         <div className="page center" style={{ minHeight: '60vh' }}>
           <div className="card" style={{ maxWidth: 460, textAlign: 'center' }}>
+            {showCoverage && (
+              <p className="badge warn">Sees 0 of {sessions.length} sessions</p>
+            )}
             <h2>You are not in any groups</h2>
             <p className="muted">
               You are signed in as {viewerEmail}. Once the event team adds you to a group, your
@@ -82,6 +73,21 @@ export default function AttendeeView({
 
   return (
     <>
+      {showCoverage && (
+        <div className="page" style={{ paddingBottom: 0 }}>
+          <span className={`badge ${mine.length === sessions.length ? 'ok' : 'warn'}`}>
+            Sees {mine.length} of {sessions.length} sessions
+          </span>{' '}
+          <span className="muted small">
+            {myGroups.length === 0
+              ? 'This person is in no groups, so only all-group sessions reach them.'
+              : `Group${myGroups.length === 1 ? '' : 's'}: ${myGroups
+                  .map((id) => groups.find((g) => g.id === id)?.name ?? id)
+                  .join(', ')}`}
+          </span>
+        </div>
+      )}
+
       <Timeline
         event={event}
         sessions={mine}
@@ -103,170 +109,6 @@ export default function AttendeeView({
         now={now}
         readOnly={readOnly}
       />
-    </>
-  )
-}
-
-function Timeline({
-  event,
-  sessions,
-  now,
-  phase,
-  onOpenSession,
-}: {
-  event: EventDoc
-  sessions: SessionDoc[]
-  now: number
-  phase: 'before' | 'during' | 'after'
-  onOpenSession: (s: SessionDoc) => void
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  /**
-   * While true, the view keeps the now line one quarter from the top (US-053). Any manual
-   * scroll turns it off, so the schedule never fights the user; the "Now" button turns it back
-   * on. This is how the snap coexists with a scrollable timeline.
-   */
-  const [following, setFollowing] = useState(true)
-  const programmatic = useRef(false)
-
-  const placed = layoutSessions(sessions)
-  const gaps = findGaps(sessions, event.startAt, event.endAt)
-  const totalHeight = heightForRange(event.startAt, event.endAt, PIXELS_PER_MINUTE, 200)
-  const nowOffset = offsetForEpoch(now, event.startAt, PIXELS_PER_MINUTE)
-
-  const snapToNow = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    programmatic.current = true
-    el.scrollTo({ top: Math.max(0, nowOffset - el.clientHeight / 4), behavior: 'smooth' })
-    // The smooth scroll emits scroll events for a while; ignore them so they do not read as
-    // the user taking over.
-    window.setTimeout(() => {
-      programmatic.current = false
-    }, 800)
-  }, [nowOffset])
-
-  useLayoutEffect(() => {
-    if (phase === 'during' && following) snapToNow()
-  }, [phase, following, snapToNow])
-
-  const onScroll = () => {
-    if (programmatic.current) return
-    if (following) setFollowing(false)
-  }
-
-  // Hour gridlines across the whole event.
-  const hours: number[] = []
-  const firstHour = Math.ceil(event.startAt / HOUR_MS) * HOUR_MS
-  for (let t = firstHour; t <= event.endAt; t += HOUR_MS) hours.push(t)
-
-  return (
-    <>
-      <div className="page" style={{ paddingBottom: 0 }}>
-        <div className="row" style={{ justifyContent: 'space-between' }}>
-          <div>
-            <strong>
-              {formatDate(event.startAt, event.timeZone)} to {formatDate(event.endAt, event.timeZone)}
-            </strong>
-            <span className="muted small">
-              {' '}
-              All times in {event.timeZone} ({timeZoneLabel(event.timeZone, event.startAt)})
-            </span>
-          </div>
-        </div>
-
-        {phase === 'before' && (
-          <div className="now-banner">
-            <span className="now-pill">Now</span>
-            <strong>
-              The event starts in {humaniseMinutes(minutesUntil(event.startAt, now))}
-            </strong>
-          </div>
-        )}
-      </div>
-
-      <div className="timeline-scroll" ref={scrollRef} onScroll={onScroll}>
-        <div className="timeline" style={{ height: totalHeight }}>
-          {hours.map((t) => (
-            <div key={t} className="hour-line" style={{ top: offsetForEpoch(t, event.startAt, PIXELS_PER_MINUTE) }}>
-              <span className="hour-label">{formatTime(t, event.timeZone)}</span>
-            </div>
-          ))}
-
-          {/* US-054: nothing scheduled for this attendee in this stretch. */}
-          {gaps.map((gap) => {
-            const top = offsetForEpoch(gap.startAt, event.startAt, PIXELS_PER_MINUTE)
-            const height = heightForRange(gap.startAt, gap.endAt, PIXELS_PER_MINUTE, 0)
-            if (height < 28) return null
-            return (
-              <div key={`${gap.startAt}-${gap.endAt}`} className="gap-note" style={{ top, height }}>
-                Nothing scheduled for you
-              </div>
-            )
-          })}
-
-          {placed.map(({ session, column, columns }) => {
-            const top = offsetForEpoch(session.startAt, event.startAt, PIXELS_PER_MINUTE)
-            const height = heightForRange(session.startAt, session.endAt, PIXELS_PER_MINUTE)
-            const widthPct = 100 / columns
-            return (
-              <button
-                key={session.id}
-                className="session-card"
-                style={{
-                  top,
-                  height,
-                  left: `calc(${column * widthPct}% + 2px)`,
-                  width: `calc(${widthPct}% - 6px)`,
-                }}
-                onClick={() => onOpenSession(session)}
-              >
-                <div className="t">{session.title}</div>
-                <div className="meta">
-                  {formatTime(session.startAt, event.timeZone)} to{' '}
-                  {formatTime(session.endAt, event.timeZone)}
-                  {session.location ? ` · ${session.location}` : ''}
-                </div>
-                {height > 70 && session.description && (
-                  <div className="desc">{session.description}</div>
-                )}
-              </button>
-            )
-          })}
-
-          {/* US-053: the now line, always above the cards. */}
-          {phase === 'during' && (
-            <div className="now-line" style={{ top: nowOffset }}>
-              <span className="now-pill">{formatTime(now, event.timeZone)}</span>
-            </div>
-          )}
-          {phase === 'before' && (
-            <div className="now-line" style={{ top: 0 }}>
-              <span className="now-pill">
-                Starts in {humaniseMinutes(minutesUntil(event.startAt, now))}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {phase === 'after' && (
-          <div className="now-line" style={{ position: 'relative', marginTop: '1rem' }}>
-            <span className="now-pill">The event has finished</span>
-          </div>
-        )}
-      </div>
-
-      {phase === 'during' && !following && (
-        <button
-          className="primary now-button"
-          onClick={() => {
-            setFollowing(true)
-            snapToNow()
-          }}
-        >
-          Now
-        </button>
-      )}
     </>
   )
 }
