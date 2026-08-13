@@ -21,9 +21,11 @@ import type {
 import PeopleTab from './PeopleTab'
 import SessionsTab from './SessionsTab'
 import RequestsTab from './RequestsTab'
+import AttendeeRequestsTab from './AttendeeRequestsTab'
+import RemoveAttendeesTab from './RemoveAttendeesTab'
 import { Modal } from './ui'
 
-type Tab = 'sessions' | 'people' | 'requests' | 'viewAs'
+type Tab = 'sessions' | 'people' | 'joinRequests' | 'remove' | 'requests' | 'viewAs'
 
 /**
  * The customised login page is only ever shown to someone who is signed out, so a team member
@@ -88,9 +90,16 @@ export default function TeamConsole({
   )
   const [previewLogin, setPreviewLogin] = useState(false)
 
-  const tabs: { id: Tab; label: string; teamOnly: boolean }[] = [
+  const tabs: { id: Tab; label: string; teamOnly: boolean; count?: number }[] = [
     { id: 'sessions', label: 'Sessions', teamOnly: true },
     { id: 'people', label: 'People and groups', teamOnly: false },
+    {
+      id: 'joinRequests',
+      label: 'Attendee requests',
+      teamOnly: true,
+      count: joinRequests.length,
+    },
+    { id: 'remove', label: 'Remove attendees', teamOnly: true },
     { id: 'requests', label: 'Attendance requests', teamOnly: false },
     { id: 'viewAs', label: 'View as attendee', teamOnly: true },
   ]
@@ -109,6 +118,9 @@ export default function TeamConsole({
               onClick={() => setTab(t.id)}
             >
               {t.label}
+              {t.count !== undefined && t.count > 0 && (
+                <span className="tab-count">{t.count}</span>
+              )}
             </button>
           ))}
         <span style={{ flex: 1 }} />
@@ -130,8 +142,15 @@ export default function TeamConsole({
           myMember={myMember}
           members={members}
           groups={groups}
-          joinRequests={joinRequests}
         />
+      )}
+
+      {tab === 'joinRequests' && team && (
+        <AttendeeRequestsTab event={event} joinRequests={joinRequests} />
+      )}
+
+      {tab === 'remove' && team && (
+        <RemoveAttendeesTab event={event} members={members} groups={groups} />
       )}
 
       {tab === 'requests' && (

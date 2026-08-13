@@ -13,7 +13,7 @@ Google Auth) as the live backend.
 
 The distinction is deliberate. Most of the `[~]` items need a signed-in browser talking to a real
 Firebase project, which the unit suite cannot reach. `npm run story-coverage` prints the same
-split. Current automated story coverage: **31 of 44 (70%)**.
+split. Current automated story coverage: **33 of 45 (73%)**.
 
 ---
 
@@ -155,9 +155,20 @@ console.
 - [x] Asking twice is harmless
 - [x] Nobody can ask on somebody else's behalf, and anonymous visitors cannot ask at all
 - [x] Only the event team can list who is waiting; one asker cannot see another's request
-- [~] The event team sees a "Waiting to be added" queue with Add and Dismiss
+- [~] The event team and owner get an **Attendee requests** tab, with a count on the tab itself
+- [~] Each row shows the email, name and when they asked, with Add and Dismiss
 - [x] Approving adds them to the roster and clears the request together
 - [~] The page updates by itself the moment they are added
+
+### US-040 Removing attendees
+- [~] The event team and owner get a **Remove attendees** tab
+- [x] Only the event team can remove somebody: not a group leader, not an attendee, and not
+      themselves
+- [~] The owner cannot be removed from their own event
+- [x] Removing somebody also deletes the attendance requests addressed to them, which would
+      otherwise be orphaned and keep counting an acknowledgement that can never come
+- [~] Removal is kept on its own tab rather than in the roster table, which is full of checkboxes
+- [~] Each row shows the person's role and groups, so it is clear who is being removed
 
 ---
 

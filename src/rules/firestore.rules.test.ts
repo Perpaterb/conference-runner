@@ -288,6 +288,32 @@ describe('the roster', () => {
     )
   })
 
+  it('lets an event team member remove somebody (US-040)', async () => {
+    await assertSucceeds(
+      deleteDoc(doc(as(env, TEAM), `events/${EVENT_ID}/members/${PLATFORM_MEMBER.email}`)),
+    )
+  })
+
+  it('lets a team member clear the removed person’s attendance requests', async () => {
+    await assertSucceeds(deleteDoc(doc(as(env, TEAM), `events/${EVENT_ID}/requests/r1`)))
+  })
+
+  it('does NOT let a group leader remove somebody', async () => {
+    await assertFails(
+      deleteDoc(doc(as(env, LEADER), `events/${EVENT_ID}/members/${PLATFORM_MEMBER.email}`)),
+    )
+  })
+
+  it('does NOT let an attendee remove anybody, including themselves', async () => {
+    const db = as(env, PLATFORM_MEMBER)
+    await assertFails(
+      deleteDoc(doc(db, `events/${EVENT_ID}/members/${DESIGN_MEMBER.email}`)),
+    )
+    await assertFails(
+      deleteDoc(doc(db, `events/${EVENT_ID}/members/${PLATFORM_MEMBER.email}`)),
+    )
+  })
+
   it('lets an event team member change roles and memberships', async () => {
     const db = as(env, TEAM)
     await assertSucceeds(

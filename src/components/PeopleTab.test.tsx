@@ -56,7 +56,6 @@ function renderTab() {
       myMember={undefined}
       members={members}
       groups={groups}
-      joinRequests={[]}
     />,
   )
 }

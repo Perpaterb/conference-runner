@@ -348,6 +348,22 @@ That change also removed a bug: the client used to try to create the member reco
 sign-in and report "could not register you on this event: missing or insufficient permissions"
 when the write was refused, on a page that was otherwise working perfectly.
 
+The queue lives on its own **Attendee requests** tab with a count rendered on the tab, rather
+than inside the roster: a request needs a decision, and a panel above a table of checkboxes is
+easy to scroll past.
+
+### US-040 Removing attendees
+
+`removeMember` deletes the member document, any attendance requests addressed to them, and any
+outstanding join request, in one batch. Leaving the attendance requests behind would orphan
+documents that only made sense addressed to somebody on the roster, and the sender's view would
+go on counting an acknowledgement that can never arrive. Clearing the join request stops a
+removal immediately re-listing them as waiting.
+
+The owner is refused, in the client and by the fact that an event without its owner has nobody
+who can administer it. Removal sits on its own tab rather than in the roster table, which is a
+grid of checkboxes and the worst possible neighbourhood for an irreversible action.
+
 ### US-039 Collapsing top bar
 
 `CollapsingActions` renders its children inline above 860px and behind a burger below it. The
@@ -409,7 +425,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-248 unit and component tests, plus 62 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+248 unit and component tests, plus 66 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

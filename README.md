@@ -135,7 +135,7 @@ shows what is on now and what is next.
 
 ```bash
 npm test                     # 248 unit and component tests
-npm run test:rules           # 62 security rules tests against a Firestore emulator
+npm run test:rules           # 66 security rules tests against a Firestore emulator
 npm run test:verify-fails    # proves the suite catches broken logic
 npm run story-coverage       # which user stories have automated coverage
 ./scripts/smoke.sh --target https://perpaterb.github.io/conference-runner/
@@ -151,7 +151,7 @@ fail is not a check.
 `scripts/verify-rules-tests-fail.sh` proves that suite has teeth by opening nine deliberate
 security holes and checking each one turns it red.
 
-`story-coverage` reports honestly. At the time of writing it is **31 of 44 stories (70%)**. The
+`story-coverage` reports honestly. At the time of writing it is **33 of 45 stories (73%)**. The
 uncovered ones need a signed-in browser against a real Firebase project, which the unit suite
 cannot reach, so they are listed as needing manual verification rather than quietly assumed to
 work. `smoke.sh` verifies a deployment is reachable, built correctly and wired to Firebase; it

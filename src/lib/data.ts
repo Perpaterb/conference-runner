@@ -363,6 +363,36 @@ export async function addMemberByEmail(eventId: string, email: string): Promise<
   })
 }
 
+/**
+ * Removes somebody from the event entirely (US-040).
+ *
+ * Their attendance requests go with them: leaving those behind would orphan documents that only
+ * ever made sense addressed to a person on the roster, and the sender's view would keep counting
+ * an acknowledgement that can never come. Any outstanding request to join goes too, so removing
+ * somebody does not immediately re-list them as waiting.
+ */
+export async function removeMember(
+  eventId: string,
+  email: string,
+  ownerEmail: string,
+): Promise<void> {
+  const lower = email.trim().toLowerCase()
+  if (lower === ownerEmail.trim().toLowerCase()) {
+    throw new Error('The owner cannot be removed from their own event.')
+  }
+
+  const requestSnap = await getDocs(collection(db(), paths.requests(eventId)))
+  const batch = writeBatch(db())
+  for (const r of requestSnap.docs) {
+    if ((r.data().recipientEmail as string | undefined)?.toLowerCase() === lower) {
+      batch.delete(r.ref)
+    }
+  }
+  batch.delete(doc(db(), paths.joinRequest(eventId, lower)))
+  batch.delete(doc(db(), paths.member(eventId, lower)))
+  await batch.commit()
+}
+
 export async function upsertGroup(eventId: string, name: string): Promise<string> {
   const id = groupIdFromName(name)
   await setDoc(doc(db(), paths.group(eventId, id)), { name: name.trim() }, { merge: true })
