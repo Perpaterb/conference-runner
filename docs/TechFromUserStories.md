@@ -264,15 +264,29 @@ Files: `src/lib/live.ts`, `src/components/ui.tsx`, `src/lib/live.test.ts`
 
 ## EP7: Team views
 
-### US-060, US-061
+### US-061 (US-060 withdrawn)
 
-`EventShell` holds two pieces of state: `attendeePreview` (the team member watching the generic
-attendee experience) and `impersonating` (a specific member). Both render the same `AttendeeView`
-component the attendee gets, with the member record swapped, so there is no separate code path to
-drift. Impersonation passes `readOnly`, which disables acknowledgement, and shows a striped
-banner.
+`EventShell` holds one piece of state, `impersonating`. It renders the same `AttendeeView` the
+attendee gets with the member record swapped, so there is no second code path to drift.
+Impersonation passes `readOnly`, which disables acknowledgement, and shows a striped banner.
 
-Files: `src/pages/EventPage.tsx`, `src/components/TeamConsole.tsx`, `src/styles.css`
+The separate "live attendee view" toggle was removed. It rendered the identical screen with no
+banner and no named subject, which made it easy to forget whose view was on screen, and it showed
+the team member's own schedule, which is usually empty.
+
+### US-059 Conference status
+
+The permanent connection indicator was replaced with what is actually happening: time to start,
+what is on now including concurrent sessions, and what is next. It is computed from the sessions
+the current viewer can see, so it follows impersonation.
+
+There were three connection badges on screen at once (top bar, team console tabs, session
+detail). There is now one, and it renders only when the connection is degraded. A healthy socket
+is not news; a stale one is.
+
+Files: `src/pages/EventPage.tsx`, `src/components/TeamConsole.tsx`, `src/styles.css`,
+`src/lib/status.ts`, `src/components/ConferenceStatus.tsx`, `src/lib/status.test.ts`,
+`src/components/SessionDetail.tsx`
 
 ---
 
@@ -295,7 +309,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-194 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+204 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

@@ -13,7 +13,7 @@ Google Auth) as the live backend.
 
 The distinction is deliberate. Most of the `[~]` items need a signed-in browser talking to a real
 Firebase project, which the unit suite cannot reach. `npm run story-coverage` prints the same
-split. Current automated story coverage: **29 of 40 (73%)**.
+split. Current automated story coverage: **30 of 41 (73%)**.
 
 ---
 
@@ -272,14 +272,26 @@ console.
 - [~] Realtime listeners are the primary transport
 - [~] A 20 second timer forces a server read as fallback
 - [~] Refresh on tab focus and on network reconnect
-- [~] A connection indicator shows live, polling or offline
+- [~] The connection indicator is silent while healthy and appears only when polling, offline or
+      errored. There is exactly one, in the top bar
+
+### US-059 Conference status in the top bar
+- [x] Before the event: time until it starts, and what is on first
+- [x] During: what is on now, including every concurrent session, or that nothing is
+- [x] What is next and how long until it begins
+- [x] After: the event is reported as finished
+- [x] Computed from the sessions this viewer can see, so an attendee gets their own next session
+- [x] Copes with an attendee who has no sessions at all
 
 ---
 
 ## EP7: Team member views
 
-### US-060 Live attendee view mode
-- [~] A team member can toggle into the plain attendee experience, live
+### US-060 Live attendee view mode: **withdrawn**
+Removed in favour of US-061. A generic "preview as an attendee" mode rendered the same screen
+with no banner, so it was easy to lose track of whose view you were looking at, and it showed a
+team member's own (usually empty) schedule rather than anybody real. Impersonating a named person
+covers the need and is always labelled.
 
 ### US-061 Impersonate attendee mode
 - [x] A team member sees "Sees N of M sessions" plus that person's groups, so a short schedule

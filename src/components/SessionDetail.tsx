@@ -6,7 +6,6 @@ import { paths, toContent } from '../lib/data'
 import { contentState } from '../lib/roles'
 import { formatDateTime, formatTime } from '../lib/time'
 import type { ContentDoc, EventDoc, GroupDoc, SessionDoc } from '../lib/types'
-import { ConnectionBadge } from './ui'
 
 export default function SessionDetail({
   event,
@@ -47,7 +46,6 @@ export default function SessionDetail({
               {n}
             </span>
           ))}
-          <ConnectionBadge status={content.status} />
         </div>
       </div>
 

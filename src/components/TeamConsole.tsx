@@ -6,7 +6,6 @@
  */
 
 import { useState } from 'react'
-import type { LiveStatus } from '../lib/live'
 import { isTeam, ledGroupIds } from '../lib/roles'
 import { updateEvent } from '../lib/data'
 import { MEMBER_TEMPLATE, downloadText } from '../lib/csv'
@@ -14,7 +13,7 @@ import type { EventDoc, GroupDoc, MemberDoc, RequestDoc, Role, SessionDoc } from
 import PeopleTab from './PeopleTab'
 import SessionsTab from './SessionsTab'
 import RequestsTab from './RequestsTab'
-import { ConnectionBadge, Modal } from './ui'
+import { Modal } from './ui'
 
 type Tab = 'sessions' | 'people' | 'requests' | 'viewAs'
 
@@ -61,7 +60,6 @@ export default function TeamConsole({
   groups,
   sessions,
   requests,
-  membersStatus,
   onImpersonate,
 }: {
   event: EventDoc
@@ -71,7 +69,6 @@ export default function TeamConsole({
   groups: GroupDoc[]
   sessions: SessionDoc[]
   requests: RequestDoc[]
-  membersStatus: LiveStatus
   onImpersonate: (m: MemberDoc | null) => void
 }) {
   const team = isTeam(role)
@@ -110,9 +107,6 @@ export default function TeamConsole({
             Preview login page
           </button>
         )}
-        <span style={{ alignSelf: 'center' }}>
-          <ConnectionBadge status={membersStatus} />
-        </span>
       </div>
 
       {tab === 'sessions' && team && (

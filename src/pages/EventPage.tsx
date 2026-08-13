@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { orderBy, where } from 'firebase/firestore'
 import { useAuth } from '../lib/auth'
-import { useLiveCollection, useLiveDoc } from '../lib/live'
+import { useLiveCollection, useLiveDoc, useNow } from '../lib/live'
 import {
   ensureMemberRecord,
   paths,
@@ -21,10 +21,11 @@ import {
   toSession,
 } from '../lib/data'
 import { emailKey } from '../lib/firebase'
-import { isTeam, resolveRole } from '../lib/roles'
+import { isTeam, resolveRole, visibleSessions } from '../lib/roles'
 import { ROLE_LABEL } from '../lib/types'
 import type { EventDoc, MemberDoc } from '../lib/types'
 import { ConnectionBadge } from '../components/ui'
+import ConferenceStatus from '../components/ConferenceStatus'
 import { ThemeToggle } from '../lib/theme'
 import AttendeeView from '../components/AttendeeView'
 import TeamConsole from '../components/TeamConsole'
@@ -131,10 +132,12 @@ function EventShell({
   const email = user?.email ?? ''
   const team = isTeam(role)
 
-  /** Who the attendee view is rendered as: normally the viewer, or the impersonated person. */
+  /**
+   * Who the attendee view is rendered as. A team member reaches it only by impersonating a
+   * specific person: a separate "preview as a generic attendee" mode was the same screen with
+   * no banner, which was just a way to lose track of whose view you were looking at.
+   */
   const [impersonating, setImpersonating] = useState<MemberDoc | null>(null)
-  /** US-060: a team member watching the plain attendee experience as themselves. */
-  const [attendeePreview, setAttendeePreview] = useState(false)
 
   const groups = useLiveCollection(paths.groups(event.id), toGroup)
   const sessions = useLiveCollection(paths.sessions(event.id), toSession, [orderBy('startAt')])
@@ -155,7 +158,13 @@ function EventShell({
   )
 
   const viewingAs = impersonating ?? myMember
-  const showAttendeeView = !team || attendeePreview || impersonating !== null
+  const showAttendeeView = !team || impersonating !== null
+  const now = useNow(15_000)
+
+  // The status bar reports on whatever this viewer can actually see.
+  const statusSessions = showAttendeeView
+    ? visibleSessions(sessions.data, viewingAs)
+    : sessions.data
 
   return (
     <>
@@ -175,13 +184,12 @@ function EventShell({
       <div className="topbar">
         <span className="brand">{event.name}</span>
         <span className="badge accent">{ROLE_LABEL[role]}</span>
-        <ConnectionBadge status={sessions.status} />
-        <span className="spacer" />
-        {team && !impersonating && (
-          <button className="small" onClick={() => setAttendeePreview((v) => !v)}>
-            {attendeePreview ? 'Back to team console' : 'Live attendee view'}
-          </button>
+        <ConferenceStatus event={event} sessions={statusSessions} now={now} />
+        {/* Silent while healthy: a warning is only worth the space when something is wrong. */}
+        {sessions.status !== 'live' && sessions.status !== 'connecting' && (
+          <ConnectionBadge status={sessions.status} />
         )}
+        <span className="spacer" />
         <span className="muted small">{email}</span>
         <ThemeToggle />
         <button className="small ghost" onClick={() => void signOutNow()}>
@@ -215,7 +223,6 @@ function EventShell({
           groups={groups.data}
           sessions={sessions.data}
           requests={requests.data}
-          membersStatus={members.status}
           onImpersonate={setImpersonating}
         />
       )}

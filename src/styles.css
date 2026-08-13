@@ -748,6 +748,36 @@ th {
   border-color: #d3dbe8;
 }
 
+/* ---------- conference status (US-059) ---------- */
+
+.conf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.conf-status .badge {
+  max-width: 40ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+.conf-status .small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The "next up" hint is the first thing to go when the bar runs out of room. */
+@media (max-width: 900px) {
+  .conf-status .small {
+    display: none;
+  }
+}
+
 /* ---------- theme toggle ---------- */
 
 .theme-toggle {

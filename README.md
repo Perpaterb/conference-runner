@@ -125,15 +125,16 @@ and leaders can write member documents, so an attendee cannot forge them.
 locale and shows MM/DD/YYYY on a US machine, so `DateTimeField` replaces it everywhere.
 
 **Live updates plus polling.** Firestore listeners are the primary transport. On top of them the
-app forces a server read every 20 seconds, on tab focus, and on network reconnect, and shows a
-live / polling / offline indicator.
+app forces a server read every 20 seconds, on tab focus, and on network reconnect. The indicator
+is silent while healthy and appears only when the connection is degraded; the top bar otherwise
+shows what is on now and what is next.
 
 ---
 
 ## Testing
 
 ```bash
-npm test                     # 194 unit and component tests
+npm test                     # 204 unit and component tests
 npm run test:rules           # 57 security rules tests against a Firestore emulator
 npm run test:verify-fails    # proves the suite catches broken logic
 npm run story-coverage       # which user stories have automated coverage
@@ -150,7 +151,7 @@ fail is not a check.
 `scripts/verify-rules-tests-fail.sh` proves that suite has teeth by opening seven deliberate
 security holes and checking each one turns it red.
 
-`story-coverage` reports honestly. At the time of writing it is **29 of 40 stories (73%)**. The
+`story-coverage` reports honestly. At the time of writing it is **30 of 41 stories (73%)**. The
 uncovered ones need a signed-in browser against a real Firebase project, which the unit suite
 cannot reach, so they are listed as needing manual verification rather than quietly assumed to
 work. `smoke.sh` verifies a deployment is reachable, built correctly and wired to Firebase; it
