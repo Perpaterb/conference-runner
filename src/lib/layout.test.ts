@@ -214,14 +214,46 @@ describe('hourTicks: the date and time axis (US-058)', () => {
   it('keeps marks within three hours either side of a session', () => {
     const sessions = [session('a', 12 * 60, 13 * 60)]
     const scale = buildTimeScale(sessions, 0, 24 * 60 * MIN)
-    // Thinning may still drop individual marks inside the window, so this checks the window
-    // itself: the earliest kept mark is three hours before, and nothing survives outside it.
+    // A compressed stretch is strided, so not every hour inside the window survives. What must
+    // hold is that nothing outside the window does.
     const epochs = hourTicks(scale, sessions).map((t) => t.epoch)
 
-    expect(Math.min(...epochs)).toBe(9 * 60 * MIN)
+    expect(Math.min(...epochs)).toBeGreaterThanOrEqual(9 * 60 * MIN)
     expect(Math.max(...epochs)).toBeLessThanOrEqual(16 * 60 * MIN)
     expect(epochs).not.toContain(8 * 60 * MIN)
     expect(epochs).not.toContain(17 * 60 * MIN)
+  })
+
+  it('always marks the hour a session starts, however compressed the run-up', () => {
+    // The reported bug: after a long overnight gap, day two showed 06:00 and 08:00 but not the
+    // 09:00 its first session started at, because thinning treated it as just another hour.
+    const day2Start = 33 * 60 // 09:00 the next day
+    const sessions = [session('day1', 9 * 60, 17 * 60), session('day2', day2Start, day2Start + 60)]
+    const scale = buildTimeScale(sessions, 0, 48 * 60 * MIN)
+    const epochs = hourTicks(scale, sessions).map((t) => t.epoch)
+
+    expect(epochs).toContain(day2Start * MIN)
+    expect(epochs).toContain(9 * 60 * MIN)
+  })
+
+  it('marks every hour inside a session, where there is room', () => {
+    const sessions = [session('a', 9 * 60, 12 * 60)]
+    const scale = buildTimeScale(sessions, 0, 24 * 60 * MIN)
+    const epochs = hourTicks(scale, sessions).map((t) => t.epoch)
+
+    for (const hour of [9, 10, 11, 12]) expect(epochs).toContain(hour * 60 * MIN)
+  })
+
+  it('uses a regular stride in compressed stretches, not an arbitrary one', () => {
+    // Every other clock hour, rather than whichever happened to fall 18px apart.
+    const sessions = [session('a', 20 * 60, 21 * 60)]
+    const scale = buildTimeScale(sessions, 0, 24 * 60 * MIN)
+    const hourOfDay = (epoch: number) => Math.floor(epoch / (60 * MIN)) % 24
+    const compressed = hourTicks(scale, sessions, { hourOfDay })
+      .map((t) => hourOfDay(t.epoch))
+      .filter((h) => h < 20)
+
+    expect(compressed.every((h) => h % 2 === 0)).toBe(true)
   })
 
   it('produces no marks at all when nothing is scheduled', () => {

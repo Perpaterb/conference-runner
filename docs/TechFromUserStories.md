@@ -245,10 +245,16 @@ The scale runs midnight to midnight (`startOfDayEpoch` / `endOfDayEpoch`) rather
 to event end, so the morning before the event begins reads as quiet time instead of the day
 appearing to start at 09:00.
 
-`hourTicks` applies two filters. Marks more than three hours from any session are dropped, since
-hour lines through the small hours tell nobody anything and clutter the compressed bands. Marks
-that would land within 18px of the previous one are dropped too, so labels stay legible where the
-scale is compressed.
+`hourTicks` applies three rules, in order of importance. Marks more than three hours from any
+session are dropped, since hour lines through the small hours tell nobody anything. Marks inside
+a busy stretch are always kept: those are drawn at full size so there is room, and the hour a
+session starts is the most useful label on the axis. Marks inside a compressed stretch are kept
+on a stride derived from that stretch's own density.
+
+The stride replaced a simple "drop anything within 18px of the last one" rule, which produced two
+visible faults. Day one showed 06:00, 07:00, 08:00, 09:00 while day two showed only 06:00 and
+08:00, because an overnight gap is compressed harder than a morning one and the rule had no
+per-stretch memory. Worse, it dropped 09:00 on a day whose first session began at 09:00.
 
 Dates moved to their own column on the far left, one band per day reading bottom to top
 (`writing-mode: vertical-rl`), so a date can never collide with a time. The column only appears
@@ -367,7 +373,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-239 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+242 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

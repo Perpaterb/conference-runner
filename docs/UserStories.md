@@ -273,7 +273,10 @@ console.
 - [x] The schedule runs midnight to midnight, so quiet time before the event start is shown
       rather than the day appearing to begin at the first session
 - [x] Hour marks appear only within three hours of a session; the small hours get none
-- [x] Marks thin out where the scale is compressed, so labels never collide
+- [x] The hour a session starts is always marked, however compressed the run-up to it
+- [x] Every hour inside a session is marked, since a busy stretch has room
+- [x] Compressed stretches use a stride based on their own density, so marks land on regular
+      clock hours instead of alternating arbitrarily from one day to the next
 - [~] A time label is centred on the line it names
 - [x] Multi-day events get a separate date column on the far left, reading bottom to top, so a
       date can never overlap a time

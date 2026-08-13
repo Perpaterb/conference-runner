@@ -224,38 +224,56 @@ export const TICK_NEAR_SESSION_MS = 3 * 3_600_000
 /**
  * Hour marks down the axis.
  *
- * Two filters apply. Marks more than `nearMs` from any session are dropped: hour lines through
- * the small hours tell nobody anything, and they clutter the compressed bands. Marks that would
- * land within `minGapPx` of the previous one are dropped too, so labels never collide where the
- * scale is compressed.
+ * Three rules, in order of importance:
  *
- * Dates are handled separately, on their own axis, so a day boundary does not need a tick here.
+ * 1. Marks more than `nearMs` from any session are dropped. Hour lines through the small hours
+ *    tell nobody anything.
+ * 2. Marks inside a busy stretch are always kept. Those stretches are drawn at full size so
+ *    there is always room, and the hour a session starts is the single most useful label on the
+ *    axis: thinning it away was how 09:00 disappeared on a day that had a 09:00 session.
+ * 3. Marks inside a compressed stretch are kept on a stride chosen from that stretch's own
+ *    density, so they come out on regular clock hours (08:00, 10:00, 12:00) rather than
+ *    alternating arbitrarily. A long overnight gap is compressed harder than a short morning
+ *    one, so without a per-stretch stride the same day could show every hour and the next only
+ *    every other one.
  */
 export function hourTicks(
   scale: TimeScale,
   sessions: SessionDoc[],
-  options: { nearMs?: number; minGapPx?: number } = {},
+  options: {
+    nearMs?: number
+    minGapPx?: number
+    /** Clock hour of an instant in the event's zone; used to align the stride to real hours. */
+    hourOfDay?: (epoch: number) => number
+  } = {},
 ): HourTick[] {
   if (scale.segments.length === 0) return []
   const nearMs = options.nearMs ?? TICK_NEAR_SESSION_MS
   const minGapPx = options.minGapPx ?? 18
+  const hourOfDay = options.hourOfDay ?? ((epoch) => Math.floor(epoch / 3_600_000))
   const HOUR = 3_600_000
 
   const nearASession = (epoch: number) =>
     sessions.some((s) => epoch >= s.startAt - nearMs && epoch <= s.endAt + nearMs)
 
   const ticks: HourTick[] = []
-  let lastY = -Infinity
 
-  const first = Math.ceil(scale.startAt / HOUR) * HOUR
-  for (let epoch = first; epoch <= scale.endAt; epoch += HOUR) {
-    if (!nearASession(epoch)) continue
-    const y = yForEpoch(scale, epoch)
-    if (y - lastY < minGapPx) continue
-    ticks.push({ epoch, y, isDayStart: false })
-    lastY = y
+  for (const segment of scale.segments) {
+    const hours = (segment.endAt - segment.startAt) / HOUR
+    const pxPerHour = hours > 0 ? segment.height / hours : Infinity
+    const stride = segment.busy ? 1 : Math.max(1, Math.ceil(minGapPx / Math.max(pxPerHour, 0.01)))
+
+    const first = Math.ceil(segment.startAt / HOUR) * HOUR
+    for (let epoch = first; epoch <= segment.endAt; epoch += HOUR) {
+      // A tick on a segment boundary belongs to the segment it starts, not the one it ends.
+      if (epoch === segment.endAt && segment !== scale.segments[scale.segments.length - 1]) continue
+      if (!nearASession(epoch)) continue
+      if (!segment.busy && hourOfDay(epoch) % stride !== 0) continue
+      ticks.push({ epoch, y: yForEpoch(scale, epoch), isDayStart: false })
+    }
   }
-  return ticks
+
+  return ticks.sort((a, b) => a.epoch - b.epoch)
 }
 
 export type EventPhase = 'before' | 'during' | 'after'

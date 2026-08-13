@@ -21,6 +21,7 @@ import {
 } from '../lib/layout'
 import {
   endOfDayEpoch,
+  epochToZonedParts,
   formatDate,
   formatTime,
   humaniseMinutes,
@@ -66,7 +67,11 @@ export default function Timeline({
 
   // Hour marks only where something is happening, and dates on their own axis so the two can
   // never overlap.
-  const ticks = hourTicks(scale, sessions)
+  const hourOfDay = useCallback(
+    (epoch: number) => epochToZonedParts(epoch, event.timeZone).hour,
+    [event.timeZone],
+  )
+  const ticks = hourTicks(scale, sessions, { hourOfDay })
 
   const days = useMemo(() => {
     const bands: { key: number; top: number; height: number; label: string }[] = []
