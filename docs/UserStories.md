@@ -286,6 +286,8 @@ console.
       errored. There is exactly one, in the top bar
 
 ### US-059 Conference status in the top bar
+- [x] The phase follows what is actually scheduled, not only the event's recorded start and end,
+      which can be narrower than its own agenda
 - [x] Before the event: time until it starts, and what is on first
 - [x] During: what is on now, including every concurrent session, or that nothing is
 - [x] What is next and how long until it begins

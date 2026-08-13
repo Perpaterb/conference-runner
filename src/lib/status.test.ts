@@ -88,3 +88,44 @@ describe('US-059: conference status', () => {
     expect(conferenceStatus(sessions, START, END, 150 * MIN).minutesToStart).toBe(0)
   })
 })
+
+describe('when the event window disagrees with its own agenda', () => {
+  // Exactly the reported case: an event recorded as running 14:21 to 14:22 while its imported
+  // agenda covers the whole day. Judging the phase from the event document alone reported
+  // "starts in 2 hr" while lunch was actually on.
+  const NARROW_START = (14 * 60 + 21) * MIN
+  const NARROW_END = (14 * 60 + 22) * MIN
+  const agenda = [
+    session('opening', 9 * 60, 10 * 60, 'Main hall'),
+    session('lunch', 12 * 60, 13 * 60, 'Foyer'),
+    session('wrap', 16 * 60, 17 * 60, 'Main hall'),
+  ]
+
+  it('reports the event as under way while a session is running', () => {
+    const status = conferenceStatus(agenda, NARROW_START, NARROW_END, 12 * 60 * MIN + 30 * MIN)
+    expect(status.phase).toBe('during')
+    expect(status.current.map((s) => s.id)).toEqual(['lunch'])
+  })
+
+  it('does not claim the event is yet to start', () => {
+    const status = conferenceStatus(agenda, NARROW_START, NARROW_END, 12 * 60 * MIN + 30 * MIN)
+    expect(status.minutesToStart).toBe(0)
+  })
+
+  it('counts down to the first session, not to the recorded start', () => {
+    const status = conferenceStatus(agenda, NARROW_START, NARROW_END, 8 * 60 * MIN)
+    expect(status.phase).toBe('before')
+    expect(status.minutesToStart).toBe(60)
+  })
+
+  it('is only finished once the last session has ended', () => {
+    expect(conferenceStatus(agenda, NARROW_START, NARROW_END, 15 * 60 * MIN).phase).toBe('during')
+    expect(conferenceStatus(agenda, NARROW_START, NARROW_END, 18 * 60 * MIN).phase).toBe('after')
+  })
+
+  it('falls back to the event window when there are no sessions', () => {
+    const status = conferenceStatus([], NARROW_START, NARROW_END, 12 * 60 * MIN)
+    expect(status.phase).toBe('before')
+    expect(status.minutesToStart).toBe(141)
+  })
+})

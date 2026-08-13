@@ -429,3 +429,48 @@ describe('card density', () => {
     expect(screen.getByText('Bring the dependency board')).toBeInTheDocument()
   })
 })
+
+describe('an event window narrower than its own agenda', () => {
+  // The reported case: the event is recorded as one minute long, but the imported agenda runs
+  // all day. The schedule must follow what is scheduled.
+  const narrowEvent = { ...event, startAt: at(14, 21), endAt: at(14, 22) }
+  const agenda = [
+    session({ id: 'opening', title: 'Opening', startAt: at(9), endAt: at(10) }),
+    session({ id: 'lunch', title: 'Lunch', startAt: at(12), endAt: at(13) }),
+  ]
+
+  const renderNarrow = () =>
+    render(
+      <AttendeeView
+        event={narrowEvent}
+        member={member({ platform: { leader: false } })}
+        sessions={agenda}
+        groups={[]}
+        requests={noRequests}
+        viewerEmail="a@x.com"
+        readOnly={false}
+      />,
+    )
+
+  it('does not claim the event is yet to start while a session is running', () => {
+    vi.setSystemTime(at(12, 30))
+    renderNarrow()
+
+    expect(screen.queryByText(/The event starts in/)).not.toBeInTheDocument()
+    const pill = document.querySelector('.now-line .now-pill')!
+    expect(pill.textContent).toBe('12:30')
+  })
+
+  it('still counts down before the first session', () => {
+    vi.setSystemTime(at(8))
+    renderNarrow()
+    expect(screen.getByText(/The event starts in 1 hr/)).toBeInTheDocument()
+  })
+
+  it('reports finished only after the last session', () => {
+    vi.setSystemTime(at(16))
+    renderNarrow()
+    const pill = document.querySelector('.now-line .now-pill')!
+    expect(pill.textContent).toContain('finished')
+  })
+})

@@ -300,6 +300,17 @@ The separate "live attendee view" toggle was removed. It rendered the identical 
 banner and no named subject, which made it easy to forget whose view was on screen, and it showed
 the team member's own schedule, which is usually empty.
 
+### Effective event range
+
+An event's recorded start and end can be narrower than its own agenda: a POC event was saved as
+running 14:21 to 14:22 while its imported schedule covered the whole day. Deciding "before /
+during / after" from the event document alone then reported "starts in 2 hr" while lunch was on,
+and the timeline, the now-line and the status bar disagreed with each other.
+
+`effectiveEventRange` widens the window to cover any session outside it, and every place that
+asks the question uses it: the timeline scale, the phase, the countdown and the status bar. The
+event document alone is never the answer.
+
 ### US-059 Conference status
 
 The permanent connection indicator was replaced with what is actually happening: time to start,
@@ -335,7 +346,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-224 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+235 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

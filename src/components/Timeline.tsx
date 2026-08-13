@@ -12,12 +12,12 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   buildTimeScale,
+  effectiveEventRange,
   eventPhase,
   hourTicks,
   layoutSessions,
   spanHeight,
   yForEpoch,
-  type EventPhase,
 } from '../lib/layout'
 import {
   endOfDayEpoch,
@@ -34,13 +34,11 @@ export default function Timeline({
   event,
   sessions,
   now,
-  phase,
   onOpenSession,
 }: {
   event: EventDoc
   sessions: SessionDoc[]
   now: number
-  phase: EventPhase
   onOpenSession: (s: SessionDoc) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -56,6 +54,11 @@ export default function Timeline({
   const dayStart = startOfDayEpoch(event.startAt, event.timeZone)
   const dayEnd = endOfDayEpoch(event.endAt, event.timeZone)
   const scale = buildTimeScale(sessions, dayStart, dayEnd)
+
+  // Before / during / after follows the sessions as well as the event's own window, so the
+  // countdown cannot claim the event has not started while a session is running.
+  const range = effectiveEventRange(sessions, event.startAt, event.endAt)
+  const phase = eventPhase(now, range.startAt, range.endAt)
   const placed = layoutSessions(sessions)
   const nowY = yForEpoch(scale, now)
   const nowInRange = now >= scale.startAt && now <= scale.endAt
@@ -125,7 +128,7 @@ export default function Timeline({
         {phase === 'before' && (
           <div className="now-banner">
             <span className="now-pill">Now</span>
-            <strong>The event starts in {humaniseMinutes(minutesUntil(event.startAt, now))}</strong>
+            <strong>The event starts in {humaniseMinutes(minutesUntil(range.startAt, now))}</strong>
           </div>
         )}
       </div>
@@ -243,14 +246,14 @@ export default function Timeline({
               <span className="now-pill">
                 {formatTime(now, event.timeZone)}
                 {phase === 'before' &&
-                  ` · starts in ${humaniseMinutes(minutesUntil(event.startAt, now))}`}
+                  ` · starts in ${humaniseMinutes(minutesUntil(range.startAt, now))}`}
                 {phase === 'after' && ' · finished'}
               </span>
             </div>
           ) : phase === 'before' ? (
             <div className="now-line pinned" style={{ top: 0 }}>
               <span className="now-pill">
-                Starts in {humaniseMinutes(minutesUntil(event.startAt, now))}
+                Starts in {humaniseMinutes(minutesUntil(range.startAt, now))}
               </span>
             </div>
           ) : null}

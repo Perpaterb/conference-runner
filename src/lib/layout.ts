@@ -260,6 +260,28 @@ export function hourTicks(
 
 export type EventPhase = 'before' | 'during' | 'after'
 
+/**
+ * The window the schedule actually occupies, widened to cover any session outside the event's
+ * own start and end.
+ *
+ * The two can disagree: an event might be recorded as running 14:21 to 14:22 while its agenda
+ * runs all day. Deciding "before / during / after" from the event document alone then reports
+ * "starts in 2 hr" while lunch is on. Everything that asks the question uses this instead, so
+ * the timeline, the now-line and the status bar cannot disagree with each other.
+ */
+export function effectiveEventRange(
+  sessions: SessionDoc[],
+  eventStartAt: number,
+  eventEndAt: number,
+): { startAt: number; endAt: number } {
+  const startAt = Math.min(eventStartAt, ...sessions.map((s) => s.startAt))
+  const endAt = Math.max(eventEndAt, ...sessions.map((s) => s.endAt))
+  return {
+    startAt: Number.isFinite(startAt) ? startAt : eventStartAt,
+    endAt: Number.isFinite(endAt) ? endAt : eventEndAt,
+  }
+}
+
 export function eventPhase(now: number, eventStart: number, eventEnd: number): EventPhase {
   if (now < eventStart) return 'before'
   if (now > eventEnd) return 'after'

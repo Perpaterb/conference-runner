@@ -3,6 +3,7 @@ import {
   MAX_EMPTY_SEGMENT_PX,
   MIN_BUSY_SEGMENT_PX,
   buildTimeScale,
+  effectiveEventRange,
   eventPhase,
   hourTicks,
   layoutSessions,
@@ -266,6 +267,22 @@ describe('mergeIntervals', () => {
 
   it('drops zero-length intervals', () => {
     expect(mergeIntervals([{ startAt: 5, endAt: 5 }])).toEqual([])
+  })
+})
+
+describe('effectiveEventRange', () => {
+  it('widens to cover sessions outside the recorded window', () => {
+    const range = effectiveEventRange([session('a', 0, 60)], 30 * MIN, 40 * MIN)
+    expect(range).toEqual({ startAt: 0, endAt: 60 * MIN })
+  })
+
+  it('keeps the event window when it is the wider of the two', () => {
+    const range = effectiveEventRange([session('a', 30, 40)], 0, 60 * MIN)
+    expect(range).toEqual({ startAt: 0, endAt: 60 * MIN })
+  })
+
+  it('falls back to the event window with no sessions', () => {
+    expect(effectiveEventRange([], 10, 20)).toEqual({ startAt: 10, endAt: 20 })
   })
 })
 

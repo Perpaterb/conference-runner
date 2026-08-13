@@ -5,7 +5,7 @@
  * session rather than the event's.
  */
 
-import { eventPhase, type EventPhase } from './layout'
+import { effectiveEventRange, eventPhase, type EventPhase } from './layout'
 import type { SessionDoc } from './types'
 
 export interface ConferenceStatus {
@@ -35,11 +35,15 @@ export function conferenceStatus(
     .sort((a, b) => a.startAt - b.startAt)
   const next = upcoming[0] ?? null
 
+  // Judge the phase by what is actually scheduled, not only by the event's recorded start and
+  // end, which can be narrower than its own agenda.
+  const range = effectiveEventRange(sessions, eventStartAt, eventEndAt)
+
   return {
-    phase: eventPhase(now, eventStartAt, eventEndAt),
+    phase: eventPhase(now, range.startAt, range.endAt),
     current,
     next,
-    minutesToStart: Math.max(0, Math.ceil((eventStartAt - now) / 60000)),
+    minutesToStart: Math.max(0, Math.ceil((range.startAt - now) / 60000)),
     minutesToNext: next ? Math.max(0, Math.ceil((next.startAt - now) / 60000)) : 0,
   }
 }

@@ -7,7 +7,6 @@
  */
 
 import { useEffect, useState } from 'react'
-import { eventPhase } from '../lib/layout'
 import { dueRequestsFor, visibleSessions } from '../lib/roles'
 import { useNow } from '../lib/live'
 import { formatDateTime } from '../lib/time'
@@ -42,7 +41,6 @@ export default function AttendeeView({
 
   const myGroups = Object.keys(member?.groups ?? {})
   const mine = visibleSessions(sessions, member)
-  const phase = eventPhase(now, event.startAt, event.endAt)
 
   // US-022: someone who has signed in but is in no group sees nothing else.
   if (myGroups.length === 0 && !member?.isTeamMember) {
@@ -92,7 +90,6 @@ export default function AttendeeView({
         event={event}
         sessions={mine}
         now={now}
-        phase={phase}
         onOpenSession={setOpenSession}
       />
 
