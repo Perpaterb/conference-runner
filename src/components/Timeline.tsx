@@ -248,7 +248,7 @@ export default function Timeline({
               </span>
             </div>
           ) : phase === 'before' ? (
-            <div className="now-line" style={{ top: 0 }}>
+            <div className="now-line pinned" style={{ top: 0 }}>
               <span className="now-pill">
                 Starts in {humaniseMinutes(minutesUntil(event.startAt, now))}
               </span>

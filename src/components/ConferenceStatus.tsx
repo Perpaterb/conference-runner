@@ -25,7 +25,9 @@ export default function ConferenceStatus({
   if (status.phase === 'before') {
     return (
       <span className="conf-status">
-        <span className="badge accent">Starts in {humaniseMinutes(status.minutesToStart)}</span>
+        <span className="badge accent">
+          <span className="clip">Starts in {humaniseMinutes(status.minutesToStart)}</span>
+        </span>
         {status.next && (
           <span className="muted small">
             First up: {status.next.title} at {formatTime(status.next.startAt, event.timeZone)}
@@ -47,9 +49,11 @@ export default function ConferenceStatus({
     <span className="conf-status">
       {status.current.length > 0 ? (
         <span className="badge ok" title={status.current.map((s) => s.title).join(', ')}>
-          Now: {status.current[0].title}
-          {status.current[0].location ? ` · ${status.current[0].location}` : ''}
-          {status.current.length > 1 && ` +${status.current.length - 1}`}
+          <span className="clip">
+            Now: {status.current[0].title}
+            {status.current[0].location ? ` · ${status.current[0].location}` : ''}
+            {status.current.length > 1 && ` +${status.current.length - 1}`}
+          </span>
         </span>
       ) : (
         <span className="badge">Nothing on right now</span>

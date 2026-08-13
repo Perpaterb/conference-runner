@@ -552,10 +552,16 @@ label {
 }
 
 /* The now line sits above every card (US-053). */
+/*
+ * `top` is the instant's position, and the box is anchored by its top edge, so without this the
+ * pill and its rule sit half a pill-height below the time they mark. The hour labels are centred
+ * the same way, so the two line up with each other.
+ */
 .now-line {
   position: absolute;
   left: 0;
   right: 0;
+  transform: translateY(-50%);
   z-index: 30;
   pointer-events: none;
   display: flex;
@@ -565,7 +571,13 @@ label {
 
 .now-line.finished {
   position: relative;
+  transform: none;
   margin-top: 1rem;
+}
+
+/* Pinned to the very top, where centring would clip half the pill off the container. */
+.now-line.pinned {
+  transform: none;
 }
 
 .now-line::after {
@@ -576,11 +588,15 @@ label {
   box-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
 }
 
+/* Centre the label on its own box so it lines up with whatever sits beside it. */
 .now-pill {
+  display: inline-flex;
+  align-items: center;
   background: var(--bad);
   color: #1a0000;
   font-weight: 700;
   font-size: 0.75rem;
+  line-height: 1.5;
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
   white-space: nowrap;
@@ -592,6 +608,7 @@ label {
   z-index: 35;
   display: flex;
   align-items: center;
+  line-height: 1.5;
   gap: 0.5rem;
   padding: 0.4rem 0.75rem;
   margin-bottom: 0.5rem;
@@ -819,11 +836,22 @@ th {
   overflow: hidden;
 }
 
+/*
+ * The badge stays inline-flex so it centres like every other one in the bar. Overriding it to
+ * inline-block for the ellipsis made it align on its text baseline instead, which is what left
+ * it sitting off from its neighbours. The truncation happens on an inner span, where
+ * text-overflow actually applies.
+ */
 .conf-status .badge {
   max-width: 40ch;
+  min-width: 0;
+}
+
+.conf-status .badge .clip {
   overflow: hidden;
   text-overflow: ellipsis;
-  display: inline-block;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .conf-status .small {
