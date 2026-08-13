@@ -161,16 +161,18 @@ export default function TeamConsole({
             fill it in, and import it under <strong>People and groups</strong>.
           </p>
           <p className="muted small">
-            The columns are: email, isEventTeamMember, then a pair of columns per group (group
-            name, and whether that person leads it). Add as many group pairs as you need. You can
-            export the same shape at any time as a backup.
+            The file is a worked example: 20 people across 5 groups, showing leaders, people in
+            several groups at once, and people in none. Delete the rows you do not need and put
+            your own in. The columns are: email, isEventTeamMember, then a pair of columns per
+            group (group name, and whether that person leads it). You can export the same shape
+            at any time as a backup.
           </p>
           <div className="row">
             <button
               className="primary"
-              onClick={() => downloadText('conference-runner-members-template.csv', MEMBER_TEMPLATE)}
+              onClick={() => downloadText('conference-runner-members-example.csv', MEMBER_TEMPLATE)}
             >
-              Download CSV template
+              Download example CSV
             </button>
             <button
               onClick={async () => {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  MEMBER_TEMPLATE,
   buildMemberCsv,
+  buildSessionTemplate,
   buildSessionCsv,
   groupIdFromName,
   parseBool,
@@ -9,7 +11,7 @@ import {
   parseSessionCsv,
 } from './csv'
 import type { GroupDoc, MemberDoc, SessionDoc } from './types'
-import { zonedTimeToEpoch } from './time'
+import { formatCsvDateTime, zonedTimeToEpoch } from './time'
 
 const SYDNEY = 'Australia/Sydney'
 
@@ -249,5 +251,98 @@ describe('parseSessionCsv (US-045)', () => {
       endAt: sessions[0].endAt,
       groupNames: ['Platform'],
     })
+  })
+})
+
+describe('the shipped example data', () => {
+  it('member example parses with no errors', () => {
+    const { rows, errors } = parseMemberCsv(MEMBER_TEMPLATE)
+    expect(errors).toEqual([])
+    expect(rows).toHaveLength(20)
+  })
+
+  it('covers 5 groups', () => {
+    const { rows } = parseMemberCsv(MEMBER_TEMPLATE)
+    const names = new Set(rows.flatMap((r) => r.groups.map((g) => g.name)))
+    expect(names).toEqual(new Set(['Platform', 'Design', 'Data', 'QA', 'Leadership']))
+  })
+
+  it('demonstrates every role, including people with no group at all', () => {
+    const { rows } = parseMemberCsv(MEMBER_TEMPLATE)
+    expect(rows.filter((r) => r.isTeamMember).length).toBeGreaterThanOrEqual(2)
+    expect(rows.filter((r) => r.groups.some((g) => g.leader)).length).toBeGreaterThanOrEqual(5)
+    expect(rows.filter((r) => r.groups.length === 0).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('includes someone leading one group while only belonging to another', () => {
+    const { rows } = parseMemberCsv(MEMBER_TEMPLATE)
+    const mixed = rows.filter(
+      (r) => r.groups.some((g) => g.leader) && r.groups.some((g) => !g.leader),
+    )
+    expect(mixed.length).toBeGreaterThan(0)
+  })
+
+  it('includes somebody in three groups at once', () => {
+    const { rows } = parseMemberCsv(MEMBER_TEMPLATE)
+    expect(Math.max(...rows.map((r) => r.groups.length))).toBe(3)
+  })
+
+  it('gives every group at least one leader, so nobody is left unmanaged', () => {
+    const { rows } = parseMemberCsv(MEMBER_TEMPLATE)
+    const led = new Set(rows.flatMap((r) => r.groups.filter((g) => g.leader).map((g) => g.name)))
+    expect(led).toEqual(new Set(['Platform', 'Design', 'Data', 'QA', 'Leadership']))
+  })
+})
+
+describe('the shipped example agenda', () => {
+  const eventStart = zonedTimeToEpoch(2026, 9, 11, 9, 0, SYDNEY)
+  const csv = () => buildSessionTemplate(eventStart, SYDNEY)
+
+  it('parses with no errors and has 15 sessions', () => {
+    const { rows, errors } = parseSessionCsv(csv(), SYDNEY)
+    expect(errors).toEqual([])
+    expect(rows).toHaveLength(15)
+  })
+
+  it('is generated from the event start date rather than a fixed past date', () => {
+    const { rows } = parseSessionCsv(csv(), SYDNEY)
+    const first = rows.reduce((a, b) => (a.startAt < b.startAt ? a : b))
+    expect(formatCsvDateTime(first.startAt, SYDNEY)).toBe('11 Sep 2026 09:00')
+  })
+
+  it('spans two calendar days', () => {
+    const { rows } = parseSessionCsv(csv(), SYDNEY)
+    const days = new Set(rows.map((r) => formatCsvDateTime(r.startAt, SYDNEY).slice(0, 11)))
+    expect(days.size).toBe(2)
+  })
+
+  it('has concurrent sessions in different locations, which is the point of the example', () => {
+    const { rows } = parseSessionCsv(csv(), SYDNEY)
+    const overlapping = rows.filter((a) =>
+      rows.some((b) => b !== a && b.startAt < a.endAt && a.startAt < b.endAt),
+    )
+    expect(overlapping.length).toBeGreaterThanOrEqual(6)
+    expect(new Set(overlapping.map((r) => r.location)).size).toBeGreaterThanOrEqual(4)
+  })
+
+  it('mixes whole-event sessions with group-specific ones', () => {
+    const { rows } = parseSessionCsv(csv(), SYDNEY)
+    expect(rows.filter((r) => r.allGroups).length).toBeGreaterThanOrEqual(6)
+    expect(rows.filter((r) => r.groupNames.length === 1).length).toBeGreaterThanOrEqual(4)
+    expect(rows.filter((r) => r.groupNames.length > 1).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('only names groups that exist in the member example', () => {
+    const { rows: sessions } = parseSessionCsv(csv(), SYDNEY)
+    const { rows: members } = parseMemberCsv(MEMBER_TEMPLATE)
+    const known = new Set(members.flatMap((m) => m.groups.map((g) => g.name)))
+    for (const s of sessions) {
+      for (const name of s.groupNames) expect(known).toContain(name)
+    }
+  })
+
+  it('every session ends after it starts', () => {
+    const { rows } = parseSessionCsv(csv(), SYDNEY)
+    for (const r of rows) expect(r.endAt).toBeGreaterThan(r.startAt)
   })
 })

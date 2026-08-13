@@ -27,6 +27,7 @@ import {
 import type { EventDoc } from '../lib/types'
 import { CopyableLink, Modal, QrCode } from '../components/ui'
 import DateTimeField from '../components/DateTimeField'
+import { ThemeToggle } from '../lib/theme'
 
 function eventUrl(eventId: string): string {
   const { origin, pathname } = window.location
@@ -76,6 +77,7 @@ export default function HomePage() {
   if (!user) {
     return (
       <div className="login-shell" style={{ background: 'var(--bg)' }}>
+        <ThemeToggle floating />
         <div className="login-card">
           <h1>Conference Runner</h1>
           <p className="muted">
@@ -96,6 +98,7 @@ export default function HomePage() {
         <span className="brand">Conference Runner</span>
         <span className="spacer" />
         <span className="muted small">{user.email}</span>
+        <ThemeToggle />
         <button className="small ghost" onClick={() => void signOutNow()}>
           Sign out
         </button>

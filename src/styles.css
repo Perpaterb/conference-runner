@@ -1,3 +1,8 @@
+/*
+ * Dark is the default palette. The light palette is a full override on [data-theme='light'],
+ * which ThemeProvider stamps on <html>. Every colour is defined in both, so nothing falls back
+ * to a dark value on a light background.
+ */
 :root {
   --bg: #0b1120;
   --panel: #111a2e;
@@ -10,9 +15,39 @@
   --ok: #34d399;
   --warn: #fbbf24;
   --bad: #f87171;
+  --grid-line: rgba(36, 48, 77, 0.7);
+  --gap-text: #64748b;
+  --card-gradient: linear-gradient(180deg, var(--panel-2), var(--panel));
+  --accent-soft: #c7d2fe;
+  --danger-text: #fecaca;
+  --danger-line: #7f1d1d;
+  --impersonate-text: #fde68a;
   --radius: 12px;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #f5f7fb;
+  --panel: #ffffff;
+  --panel-2: #eef2f9;
+  --line: #d3dbe8;
+  --text: #16202f;
+  --muted: #5c6a7f;
+  --accent: #4f46e5;
+  --accent-2: #0e7490;
+  --ok: #047857;
+  --warn: #a16207;
+  --bad: #b91c1c;
+  --grid-line: rgba(148, 163, 184, 0.45);
+  --gap-text: #94a3b8;
+  --card-gradient: linear-gradient(180deg, #ffffff, var(--panel-2));
+  --accent-soft: #4338ca;
+  --danger-text: #b91c1c;
+  --danger-line: #fca5a5;
+  --impersonate-text: #854d0e;
+  --shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  color-scheme: light;
 }
 
 * {
@@ -75,7 +110,7 @@ p {
   align-items: center;
   gap: 0.75rem;
   padding: 0.6rem 1rem;
-  background: rgba(11, 17, 32, 0.92);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
 }
@@ -166,8 +201,8 @@ button.primary {
 }
 
 button.danger {
-  border-color: #7f1d1d;
-  color: #fecaca;
+  border-color: var(--danger-line);
+  color: var(--danger-text);
 }
 
 button.ghost {
@@ -309,7 +344,7 @@ label {
   border-color: rgba(248, 113, 113, 0.4);
 }
 .badge.accent {
-  color: #c7d2fe;
+  color: var(--accent-soft);
   border-color: rgba(99, 102, 241, 0.5);
 }
 
@@ -364,7 +399,7 @@ label {
   position: absolute;
   left: -62px;
   right: 0;
-  border-top: 1px solid rgba(36, 48, 77, 0.7);
+  border-top: 1px solid var(--grid-line);
   pointer-events: none;
 }
 
@@ -380,7 +415,7 @@ label {
 .session-card {
   position: absolute;
   overflow: hidden;
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  background: var(--card-gradient);
   border: 1px solid var(--line);
   border-left: 3px solid var(--accent);
   border-radius: 10px;
@@ -417,7 +452,7 @@ label {
   right: 0;
   display: grid;
   place-items: center;
-  color: #64748b;
+  color: var(--gap-text);
   font-size: 0.85rem;
   font-style: italic;
   pointer-events: none;
@@ -524,7 +559,7 @@ label {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(2, 6, 23, 0.7);
+  background: color-mix(in srgb, #020617 70%, transparent);
   display: grid;
   place-items: center;
   padding: 1rem;
@@ -602,7 +637,7 @@ th {
 .chip.on {
   background: rgba(99, 102, 241, 0.18);
   border-color: rgba(99, 102, 241, 0.6);
-  color: #c7d2fe;
+  color: var(--accent-soft);
 }
 
 /* ---------- impersonation banner (US-061) ---------- */
@@ -623,7 +658,7 @@ th {
     rgba(251, 191, 36, 0.06) 20px
   );
   border-bottom: 1px solid rgba(251, 191, 36, 0.5);
-  color: #fde68a;
+  color: var(--impersonate-text);
 }
 
 /* ---------- login page (US-020) ---------- */
@@ -640,7 +675,7 @@ th {
 .login-card {
   width: min(420px, 100%);
   text-align: center;
-  background: rgba(11, 17, 32, 0.82);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
   backdrop-filter: blur(10px);
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -673,7 +708,31 @@ th {
   font-weight: 600;
   background: #fff;
   color: #1f2937;
-  border-color: #fff;
+  border-color: #d3dbe8;
+}
+
+/* ---------- theme toggle ---------- */
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.theme-toggle.floating {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 60;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 520px) {
+  .theme-toggle-text {
+    display: none;
+  }
 }
 
 /* ---------- misc ---------- */

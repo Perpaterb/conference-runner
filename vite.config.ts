@@ -13,5 +13,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // Rules tests need a running Firestore emulator, so they run separately via
+    // `npm run test:rules` rather than as part of the fast unit suite.
+    exclude: ['src/rules/**'],
   },
 })

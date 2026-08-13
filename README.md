@@ -128,7 +128,8 @@ live / polling / offline indicator.
 ## Testing
 
 ```bash
-npm test                     # 156 unit and component tests
+npm test                     # 169 unit and component tests
+npm run test:rules           # 57 security rules tests against a Firestore emulator
 npm run test:verify-fails    # proves the suite catches broken logic
 npm run story-coverage       # which user stories have automated coverage
 ./scripts/smoke.sh --target https://perpaterb.github.io/conference-runner/
@@ -139,7 +140,12 @@ leader scoping, visibility windows, the scheduled-send filter, overlap columns, 
 handling, email validation) and asserts the suite goes red each time. A check nobody has seen
 fail is not a check.
 
-`story-coverage` reports honestly. At the time of writing it is **24 of 37 stories (65%)**. The
+`test:rules` needs Java and boots a Firestore emulator automatically. It loads the real
+`firestore.rules` and exercises every role from anonymous visitor to owner.
+`scripts/verify-rules-tests-fail.sh` proves that suite has teeth by opening seven deliberate
+security holes and checking each one turns it red.
+
+`story-coverage` reports honestly. At the time of writing it is **28 of 39 stories (72%)**. The
 uncovered ones need a signed-in browser against a real Firebase project, which the unit suite
 cannot reach, so they are listed as needing manual verification rather than quietly assumed to
 work. `smoke.sh` verifies a deployment is reachable, built correctly and wired to Firebase; it

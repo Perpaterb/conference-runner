@@ -25,6 +25,7 @@ import { isTeam, resolveRole } from '../lib/roles'
 import { ROLE_LABEL } from '../lib/types'
 import type { EventDoc, MemberDoc } from '../lib/types'
 import { ConnectionBadge } from '../components/ui'
+import { ThemeToggle } from '../lib/theme'
 import AttendeeView from '../components/AttendeeView'
 import TeamConsole from '../components/TeamConsole'
 
@@ -182,6 +183,7 @@ function EventShell({
           </button>
         )}
         <span className="muted small">{email}</span>
+        <ThemeToggle />
         <button className="small ghost" onClick={() => void signOutNow()}>
           Sign out
         </button>
@@ -238,6 +240,7 @@ function EventLogin({
 
   return (
     <div className="login-shell" style={{ background }}>
+      <ThemeToggle floating />
       <div className="login-card">
         {event?.logoUrl && <img className="logo" src={event.logoUrl} alt="" />}
         <h1>{event?.name ?? (loading ? 'Loading event…' : 'Event')}</h1>

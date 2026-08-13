@@ -33,9 +33,22 @@ on it. Two constraints shaped the data model: rules cannot iterate a map's value
 iterate a list. Hence the denormalised `isLeader` / `ledGroupIds` fields on member documents, and
 one request document per recipient.
 
-Not verified by an emulator suite. Recorded as the main open risk.
+**Verified by 57 tests against a real Firestore emulator** (`npm run test:rules`), covering every
+role from anonymous visitor to owner, plus cross-event isolation and the deny-by-default floor.
+The tests load the actual `firestore.rules` file, so they test the deployed rules rather than a
+copy. Fixtures are written with rules disabled, so a broken rule cannot quietly skip the seed and
+make a later assertion pass for the wrong reason.
 
-Files: `firestore.rules`, `storage.rules`, `src/lib/types.ts`
+They passed first time, which only means something if they can fail, so
+`scripts/verify-rules-tests-fail.sh` opens seven deliberate holes in turn (self-promotion, roster
+listing, leader scoping, request scoping, event listing, session writes, request rewriting) and
+asserts the suite goes red for each. All seven are caught.
+
+The rules job runs in CI with a Java 21 runtime and gates the deploy.
+
+Files: `firestore.rules`, `storage.rules`, `src/lib/types.ts`, `firebase.json`,
+`vitest.rules.config.ts`, `src/rules/helpers.ts`, `src/rules/firestore.rules.test.ts`,
+`scripts/verify-rules-tests-fail.sh`, `.github/workflows/deploy.yml`
 
 ---
 
@@ -90,6 +103,36 @@ throughout, and impossible dates such as 31 Feb are rejected rather than rolled 
 Files: `src/components/DateTimeField.tsx`, `src/components/DateTimeField.test.tsx`,
 `src/styles.css`, `src/pages/HomePage.tsx`, `src/components/SessionsTab.tsx`,
 `src/components/ContentEditor.tsx`, `src/components/RequestsTab.tsx`
+
+### US-014 Light and dark theme
+
+`ThemeProvider` holds three states: `light`, `dark`, or `system`, which follows
+`prefers-color-scheme` and keeps following it while the page is open. The resolved value is
+stamped on `<html>` as `data-theme`, and CSS defines the light palette as a complete override so
+no colour falls back to a dark value on a light background. Colours that were hardcoded for dark
+(danger text, accent chips, the impersonation banner) became variables with a value in each
+palette. `colorScheme` is set too, so scrollbars and native controls match.
+
+Files: `src/lib/theme.tsx`, `src/styles.css`, `src/App.tsx`, `src/pages/HomePage.tsx`,
+`src/pages/EventPage.tsx`, `src/pages/SetupNeeded.tsx`
+
+### US-036 Worked example data
+
+The downloadable CSVs are worked examples rather than bare headers, so someone can see what the
+format supports and delete what they do not need.
+
+The member example is 20 people over Platform, Design, Data, QA and Leadership, and deliberately
+includes the awkward cases: an event team member who also leads a group, someone leading one
+group while merely belonging to another, one person in three groups, two leaders on a group, and
+two people in no group at all so the "You are not in any groups" state is easy to demonstrate.
+
+The agenda is **generated from the event's own start date** rather than being a fixed string, so
+it imports onto real dates instead of landing in the past. It is 15 sessions over two days, with
+four concurrent breakouts in separate rooms and a Leadership session overlapping a cross-team
+one, which is what exercises the side-by-side timeline layout.
+
+Files: `src/lib/csv.ts`, `src/lib/csv.test.ts`, `src/components/SessionsTab.tsx`,
+`src/components/PeopleTab.tsx`, `src/components/TeamConsole.tsx`
 
 ---
 
@@ -227,7 +270,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-156 unit and component tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+169 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

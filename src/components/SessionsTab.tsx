@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import {
-  SESSION_TEMPLATE,
+  buildSessionTemplate,
   buildSessionCsv,
   downloadText,
   parseSessionCsv,
@@ -46,9 +46,14 @@ export default function SessionsTab({
         <div className="row">
           <button
             className="small"
-            onClick={() => downloadText('conference-runner-sessions-template.csv', SESSION_TEMPLATE)}
+            onClick={() =>
+              downloadText(
+                'conference-runner-sessions-example.csv',
+                buildSessionTemplate(event.startAt, event.timeZone),
+              )
+            }
           >
-            Download template
+            Download example agenda
           </button>
           <button
             className="small"

@@ -112,9 +112,9 @@ export default function PeopleTab({
           <div className="row">
             <button
               className="small"
-              onClick={() => downloadText('conference-runner-members-template.csv', MEMBER_TEMPLATE)}
+              onClick={() => downloadText('conference-runner-members-example.csv', MEMBER_TEMPLATE)}
             >
-              Download template
+              Download example
             </button>
             <button
               className="small"

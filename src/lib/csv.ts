@@ -4,7 +4,7 @@
  */
 
 import type { GroupDoc, MemberDoc, SessionDoc } from './types'
-import { formatCsvDateTime, parseCsvDateTime } from './time'
+import { epochToZonedParts, formatCsvDateTime, parseCsvDateTime, zonedTimeToEpoch } from './time'
 
 /** RFC4180-ish reader: handles quoted fields, embedded commas, newlines and "" escapes. */
 export function parseCsv(text: string): string[][] {
@@ -124,11 +124,51 @@ export interface ParsedMemberRow {
   groups: { name: string; leader: boolean }[]
 }
 
+/**
+ * A worked example rather than a bare header row: 20 people across 5 groups, showing every
+ * combination the format supports. Delete the rows you do not need.
+ *
+ * Between them these rows demonstrate: event team members who are also group leaders, people
+ * leading one group while merely belonging to another, someone in three groups at once, groups
+ * with two leaders, and two people in no group at all (who will see "You are not in any groups"
+ * until somebody adds them).
+ */
 export const MEMBER_TEMPLATE = buildCsv([
-  ['email', 'isEventTeamMember', 'group1Name', 'group1Leader', 'group2Name', 'group2Leader'],
-  ['owner@example.com', 'true', 'Platform', 'true', '', ''],
-  ['leader@example.com', 'false', 'Platform', 'true', 'Design', 'false'],
-  ['member@example.com', 'false', 'Design', 'false', '', ''],
+  [
+    'email',
+    'isEventTeamMember',
+    'group1Name',
+    'group1Leader',
+    'group2Name',
+    'group2Leader',
+    'group3Name',
+    'group3Leader',
+  ],
+  // Event team: run the event, can see and edit everything.
+  ['rta@example.com', 'true', 'Leadership', 'true', '', '', '', ''],
+  ['scrum.master@example.com', 'true', 'Leadership', 'false', 'Platform', 'false', '', ''],
+  // Group leaders: manage their own group, and can request attendance from its members.
+  ['priya.raman@example.com', 'false', 'Platform', 'true', 'Data', 'false', '', ''],
+  ['tom.becker@example.com', 'false', 'Platform', 'true', '', '', '', ''],
+  ['aiko.tanaka@example.com', 'false', 'Design', 'true', 'Platform', 'false', '', ''],
+  ['marcus.hall@example.com', 'false', 'Data', 'true', '', '', '', ''],
+  ['sofia.reyes@example.com', 'false', 'QA', 'true', 'Data', 'false', '', ''],
+  ['nina.olsen@example.com', 'false', 'Leadership', 'true', 'Design', 'false', '', ''],
+  // Someone who spans three groups.
+  ['dev.patel@example.com', 'false', 'Platform', 'false', 'Data', 'false', 'QA', 'false'],
+  // Ordinary members.
+  ['liam.murphy@example.com', 'false', 'Platform', 'false', '', '', '', ''],
+  ['grace.chen@example.com', 'false', 'Platform', 'false', 'QA', 'false', '', ''],
+  ['omar.haddad@example.com', 'false', 'Design', 'false', '', '', '', ''],
+  ['ella.novak@example.com', 'false', 'Design', 'false', 'QA', 'false', '', ''],
+  ['jonas.weber@example.com', 'false', 'Data', 'false', '', '', '', ''],
+  ['mei.lin@example.com', 'false', 'Data', 'false', 'Platform', 'false', '', ''],
+  ['ruben.diaz@example.com', 'false', 'QA', 'false', '', '', '', ''],
+  ['hana.suzuki@example.com', 'false', 'QA', 'false', 'Design', 'false', '', ''],
+  ['felix.arnold@example.com', 'false', 'Leadership', 'false', '', '', '', ''],
+  // No groups yet: these two show the "logged in but not placed" state.
+  ['new.starter@example.com', 'false', '', '', '', '', '', ''],
+  ['observer@example.com', 'false', '', '', '', '', '', ''],
 ])
 
 /**
@@ -240,25 +280,47 @@ export interface ParsedSessionRow {
   allGroups: boolean
 }
 
-export const SESSION_TEMPLATE = buildCsv([
-  ['title', 'description', 'location', 'start', 'end', 'groups'],
-  [
-    'Opening plenary',
-    'Welcome and PI objectives',
-    'Main hall',
-    '28 Jun 2026 09:00',
-    '28 Jun 2026 10:00',
-    'ALL',
-  ],
-  [
-    'Team breakout',
-    'Draft plan review',
-    'Room 2',
-    '28 Jun 2026 10:15',
-    '28 Jun 2026 12:00',
-    'Platform;Design',
-  ],
-])
+/**
+ * A worked two-day agenda: 15 sessions including four concurrent breakouts in different rooms,
+ * a leadership session overlapping a cross-team one, and plenaries for everybody.
+ *
+ * The dates are generated from the event's own start date, so the file imports cleanly instead
+ * of landing on some fixed date in the past. Day 2 is the calendar day after day 1.
+ */
+export function buildSessionTemplate(eventStartAt: number, timeZone: string): string {
+  const day1 = epochToZonedParts(eventStartAt, timeZone)
+  const middayDay1 = zonedTimeToEpoch(day1.year, day1.month, day1.day, 12, 0, timeZone)
+  const day2 = epochToZonedParts(middayDay1 + 86_400_000, timeZone)
+
+  const at = (day: typeof day1, hour: number, minute: number) =>
+    formatCsvDateTime(zonedTimeToEpoch(day.year, day.month, day.day, hour, minute, timeZone), timeZone)
+
+  const rows: string[][] = [
+    ['title', 'description', 'location', 'start', 'end', 'groups'],
+
+    // Day 1: plenary, four concurrent breakouts, then cross-team work.
+    ['Opening plenary', 'Welcome, safety, and how the two days run.', 'Main hall', at(day1, 9, 0), at(day1, 9, 30), 'ALL'],
+    ['Business context and vision', 'Where the product is heading this quarter.', 'Main hall', at(day1, 9, 30), at(day1, 10, 30), 'ALL'],
+    ['Morning break', '', 'Foyer', at(day1, 10, 30), at(day1, 10, 45), 'ALL'],
+    ['Platform breakout', 'Capacity, dependencies and draft objectives.', 'Room 1', at(day1, 10, 45), at(day1, 12, 0), 'Platform'],
+    ['Design breakout', 'Research findings and the design backlog.', 'Room 2', at(day1, 10, 45), at(day1, 12, 0), 'Design'],
+    ['Data breakout', 'Pipeline work and reporting commitments.', 'Room 3', at(day1, 10, 45), at(day1, 12, 0), 'Data'],
+    ['QA breakout', 'Test strategy and environment needs.', 'Room 4', at(day1, 10, 45), at(day1, 12, 0), 'QA'],
+    ['Lunch', '', 'Foyer', at(day1, 12, 0), at(day1, 13, 0), 'ALL'],
+    ['Draft plan review', 'Each group walks its draft plan.', 'Main hall', at(day1, 13, 0), at(day1, 14, 30), 'ALL'],
+    // These two run at the same time for different audiences.
+    ['Leadership sync', 'Scope and budget calls arising from the drafts.', 'Room 5', at(day1, 14, 30), at(day1, 15, 30), 'Leadership'],
+    ['Cross-team dependency mapping', 'Work the dependency board together.', 'Main hall', at(day1, 14, 30), at(day1, 16, 0), 'Platform;Design;Data;QA'],
+    ['Day 1 wrap and risks', 'ROAMing the risks raised today.', 'Main hall', at(day1, 16, 0), at(day1, 17, 0), 'ALL'],
+
+    // Day 2: two concurrent working sessions, then commitment.
+    ['Final plan drafting', 'Close out objectives and estimates.', 'Room 1', at(day2, 9, 0), at(day2, 10, 30), 'Platform;Data'],
+    ['Design critique and QA handover', 'Walk the flows and agree test coverage.', 'Room 2', at(day2, 9, 0), at(day2, 10, 30), 'Design;QA'],
+    ['Plan commitment and confidence vote', 'Final plans, then the confidence vote.', 'Main hall', at(day2, 11, 0), at(day2, 12, 0), 'ALL'],
+  ]
+
+  return buildCsv(rows)
+}
 
 /** `groups` is semicolon-separated names, or the literal ALL for every group. */
 export function parseSessionCsv(text: string, timeZone: string): ImportResult<ParsedSessionRow> {

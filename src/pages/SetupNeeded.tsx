@@ -4,10 +4,13 @@
  * A blank page is the worst possible failure for a POC someone else is deploying, so the app
  * states exactly what is missing and what to do about it.
  */
+import { ThemeToggle } from '../lib/theme'
+
 export default function SetupNeeded() {
   const host = typeof window === 'undefined' ? '' : window.location.hostname
   return (
     <div className="page">
+      <ThemeToggle floating />
       <h1>Conference Runner needs its Firebase settings</h1>
       <p className="muted">
         The app is deployed, but no Firebase project is attached yet, so there is nothing to sign

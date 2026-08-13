@@ -16,6 +16,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Security rules are the only thing stopping an attendee editing the event, so a broken rules
+  # file must never reach a deploy. Runs against a real Firestore emulator.
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Firestore security rules tests
+        run: npm run test:rules
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -49,7 +71,7 @@ jobs:
           path: dist
 
   deploy:
-    needs: build
+    needs: [build, rules]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

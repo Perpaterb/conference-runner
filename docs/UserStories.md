@@ -13,7 +13,7 @@ Google Auth) as the live backend.
 
 The distinction is deliberate. Most of the `[~]` items need a signed-in browser talking to a real
 Firebase project, which the unit suite cannot reach. `npm run story-coverage` prints the same
-split. Current automated story coverage: **24 of 37 (65%)**.
+split. Current automated story coverage: **28 of 39 (72%)**.
 
 ---
 
@@ -43,12 +43,18 @@ As a developer, I want Firebase configured from build-time env so no secrets are
 As an owner, I want roles enforced by the backend so nobody can bypass them with the browser
 console.
 
-- [~] `firestore.rules` restricts every collection by role
+- [x] `firestore.rules` restricts every collection by role, verified by 57 tests against a real
+      Firestore emulator
+- [x] A non-team attendee cannot write sessions, edit membership, or self-promote
+- [x] A group leader cannot touch a group they only belong to, nor address anyone outside their
+      group, nor promote anyone to the event team
+- [x] A request recipient can acknowledge but not rewrite the ask
+- [x] Attendees cannot list the roster or read another attendee's requests
+- [x] A team member of one event cannot read or write another event
+- [x] Unmatched paths are denied
+- [x] The suite is proven to catch regressions: `scripts/verify-rules-tests-fail.sh` opens seven
+      deliberate holes and all seven turn it red
 - [~] `storage.rules` restricts uploads to the event owner (unused: Storage is not enabled)
-- [ ] **A non-team attendee cannot write sessions, edit membership, or self-promote.** The rules
-      are written to prevent this and the equivalent client-side logic is unit tested, but the
-      rules themselves are unverified: that needs a Firebase emulator test suite, which is not
-      built. Treat this as the largest open risk in the POC.
 
 ---
 
@@ -79,6 +85,13 @@ console.
 > Changed from upload to link: Firebase Storage now requires the paid Blaze plan to create a
 > bucket, so the POC stays on the free Spark plan. `storage.rules` is kept in the repo for
 > whenever uploads are wanted.
+
+### US-014 Light and dark theme
+- [x] A theme button in the top right of every screen, including the signed-out pages
+- [x] Follows the operating system until an explicit choice is made, then keeps that choice
+- [x] The choice survives a reload
+- [x] Keeps following the OS if that setting changes while the page is open
+- [~] Every colour is defined in both palettes, with no dark value left on a light background
 
 ### US-013 Owner event list
 - [~] Owner sees all events they own and can reopen any
@@ -117,6 +130,15 @@ console.
 ### US-030 Owner onboarding prompt
 - [~] On the owner's first login to their event, they are prompted to download the CSV template
 - [~] The prompt can be dismissed and does not return
+
+### US-036 Worked example data
+- [x] The member example is 20 people across 5 groups and imports with no errors
+- [x] It covers event team members, leaders, someone in three groups, and people in no group
+- [x] Every group has at least one leader
+- [x] The agenda example is 15 sessions over two days and imports with no errors
+- [x] It includes concurrent sessions in at least four different locations
+- [x] Its dates are generated from the event's own start date, not a fixed past date
+- [x] It only names groups that exist in the member example
 
 ### US-031 Member CSV import
 - [x] Columns: `email, isEventTeamMember, group1Name, group1Leader, ...`
@@ -281,9 +303,7 @@ console.
 
 ## Known caveats (accepted for POC)
 
-1. **Security rules are unverified.** They are written and reviewed but there is no emulator test
-   suite exercising them. This is the biggest gap. See US-003.
-2. **Future-dated requests are hidden client-side.** Without a Cloud Function the request document
+1. **Future-dated requests are hidden client-side.** Without a Cloud Function the request document
    exists from creation. Rules limit reads to the recipient and the sender, so the worst case is a
    recipient reading their own not-yet-due request via the console.
 3. **Session content is filtered client-side.** Rules allow signed-in event users to read session
