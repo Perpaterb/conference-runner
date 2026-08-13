@@ -75,7 +75,7 @@ export const BUSY_PIXELS_PER_MINUTE = 2
 /** Compressed scale where nothing is scheduled. */
 export const EMPTY_PIXELS_PER_HOUR = 22
 /** A busy stretch never gets smaller than this, so a five-minute session stays readable. */
-export const MIN_BUSY_SEGMENT_PX = 52
+export const MIN_BUSY_SEGMENT_PX = 30
 /** An empty stretch never grows past this, so an overnight gap cannot dominate the page. */
 export const MAX_EMPTY_SEGMENT_PX = 190
 /** ...nor shrink below this, so it stays visible as a break in the day. */
@@ -206,7 +206,7 @@ export function spanHeight(
   scale: TimeScale,
   startAt: number,
   endAt: number,
-  minimum = 40,
+  minimum = 26,
 ): number {
   return Math.max(yForEpoch(scale, endAt) - yForEpoch(scale, startAt), minimum)
 }
@@ -218,26 +218,41 @@ export interface HourTick {
   isDayStart: boolean
 }
 
+/** An hour mark is only worth drawing this close to a session. */
+export const TICK_NEAR_SESSION_MS = 3 * 3_600_000
+
 /**
- * Hour marks down the axis, thinned out so labels never collide once a stretch is compressed.
- * Midnight is always kept, so a new day is never unlabelled.
+ * Hour marks down the axis.
+ *
+ * Two filters apply. Marks more than `nearMs` from any session are dropped: hour lines through
+ * the small hours tell nobody anything, and they clutter the compressed bands. Marks that would
+ * land within `minGapPx` of the previous one are dropped too, so labels never collide where the
+ * scale is compressed.
+ *
+ * Dates are handled separately, on their own axis, so a day boundary does not need a tick here.
  */
 export function hourTicks(
   scale: TimeScale,
-  isDayStart: (epoch: number) => boolean,
-  minGapPx = 18,
+  sessions: SessionDoc[],
+  options: { nearMs?: number; minGapPx?: number } = {},
 ): HourTick[] {
   if (scale.segments.length === 0) return []
+  const nearMs = options.nearMs ?? TICK_NEAR_SESSION_MS
+  const minGapPx = options.minGapPx ?? 18
   const HOUR = 3_600_000
+
+  const nearASession = (epoch: number) =>
+    sessions.some((s) => epoch >= s.startAt - nearMs && epoch <= s.endAt + nearMs)
+
   const ticks: HourTick[] = []
   let lastY = -Infinity
 
   const first = Math.ceil(scale.startAt / HOUR) * HOUR
   for (let epoch = first; epoch <= scale.endAt; epoch += HOUR) {
+    if (!nearASession(epoch)) continue
     const y = yForEpoch(scale, epoch)
-    const dayStart = isDayStart(epoch)
-    if (!dayStart && y - lastY < minGapPx) continue
-    ticks.push({ epoch, y, isDayStart: dayStart })
+    if (y - lastY < minGapPx) continue
+    ticks.push({ epoch, y, isDayStart: false })
     lastY = y
   }
   return ticks

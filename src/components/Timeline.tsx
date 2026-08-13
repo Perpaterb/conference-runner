@@ -9,7 +9,7 @@
  * see, the scale differs from one attendee to the next.
  */
 
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   buildTimeScale,
   eventPhase,
@@ -21,7 +21,6 @@ import {
 } from '../lib/layout'
 import {
   endOfDayEpoch,
-  epochToZonedParts,
   formatDate,
   formatTime,
   humaniseMinutes,
@@ -59,15 +58,32 @@ export default function Timeline({
   const scale = buildTimeScale(sessions, dayStart, dayEnd)
   const placed = layoutSessions(sessions)
   const nowY = yForEpoch(scale, now)
+  const nowInRange = now >= scale.startAt && now <= scale.endAt
 
-  const isMidnight = useCallback(
-    (epoch: number) => {
-      const p = epochToZonedParts(epoch, event.timeZone)
-      return p.hour === 0 && p.minute === 0
-    },
-    [event.timeZone],
-  )
-  const ticks = hourTicks(scale, isMidnight)
+  // Hour marks only where something is happening, and dates on their own axis so the two can
+  // never overlap.
+  const ticks = hourTicks(scale, sessions)
+
+  const days = useMemo(() => {
+    const bands: { key: number; top: number; height: number; label: string }[] = []
+    if (scale.segments.length === 0) return bands
+    let cursor = scale.startAt
+    for (let guard = 0; guard < 40 && cursor < scale.endAt; guard++) {
+      const boundary = Math.min(endOfDayEpoch(cursor, event.timeZone), scale.endAt)
+      if (boundary <= cursor) break
+      const top = yForEpoch(scale, cursor)
+      bands.push({
+        key: cursor,
+        top,
+        height: yForEpoch(scale, boundary) - top,
+        label: formatDate(cursor, event.timeZone),
+      })
+      cursor = boundary
+    }
+    return bands
+  }, [scale, event.timeZone])
+
+  const multiDay = days.length > 1
 
   const snapToNow = useCallback(() => {
     const el = scrollRef.current
@@ -120,19 +136,28 @@ export default function Timeline({
           negatively positioned label inside a scrolling box is clipped and unreachable, which is
           how the times ended up off the left edge.
         */}
-        <div className="timeline-grid" style={{ height: scale.totalHeight }}>
+        <div
+          className={`timeline-grid${multiDay ? ' with-dates' : ''}`}
+          style={{ height: scale.totalHeight }}
+        >
+          {multiDay && (
+            <div className="day-axis">
+              {days.map((day) => (
+                <div
+                  key={day.key}
+                  className="day-band"
+                  style={{ top: day.top, height: day.height }}
+                >
+                  {day.height >= 60 && <span>{day.label}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="axis">
             {ticks.map((tick) => (
-              <span
-                key={tick.epoch}
-                className={`hour-label${tick.isDayStart ? ' day-start' : ''}`}
-                style={{ top: tick.y }}
-              >
-                {tick.isDayStart ? (
-                  <strong>{formatDate(tick.epoch, event.timeZone)}</strong>
-                ) : (
-                  formatTime(tick.epoch, event.timeZone)
-                )}
+              <span key={tick.epoch} className="hour-label" style={{ top: tick.y }}>
+                {formatTime(tick.epoch, event.timeZone)}
               </span>
             ))}
           </div>
@@ -152,11 +177,7 @@ export default function Timeline({
               ))}
 
             {ticks.map((tick) => (
-              <div
-                key={tick.epoch}
-                className={`hour-line${tick.isDayStart ? ' day-start' : ''}`}
-                style={{ top: tick.y }}
-              />
+              <div key={tick.epoch} className="hour-line" style={{ top: tick.y }} />
             ))}
 
             {placed.map(({ session, column, columns }) => {
@@ -165,7 +186,7 @@ export default function Timeline({
               const widthPct = 100 / columns
               // Short cards drop to two lines, then to one, rather than squeezing three lines
               // into space that cannot hold them.
-              const density = height < 52 ? 'tiny' : height < 86 ? 'short' : 'full'
+              const density = height < 46 ? 'tiny' : height < 80 ? 'short' : 'full'
               const times = `${formatTime(session.startAt, event.timeZone)} to ${formatTime(
                 session.endAt,
                 event.timeZone,
@@ -211,22 +232,31 @@ export default function Timeline({
             })}
           </div>
 
-          {/* US-053: the now-line, above everything, positioned through the same scale. */}
-          {phase === 'during' && (
+          {/*
+            US-053: the now-line, above everything, positioned through the same scale.
+            Since the schedule runs midnight to midnight, "before the event" no longer means
+            "off the top": at 11:45 on the day of a 14:00 start, the line belongs at 11:45.
+            It only pins to the top when now really is outside the displayed range.
+          */}
+          {nowInRange ? (
             <div className="now-line" style={{ top: nowY }}>
-              <span className="now-pill">{formatTime(now, event.timeZone)}</span>
+              <span className="now-pill">
+                {formatTime(now, event.timeZone)}
+                {phase === 'before' &&
+                  ` · starts in ${humaniseMinutes(minutesUntil(event.startAt, now))}`}
+                {phase === 'after' && ' · finished'}
+              </span>
             </div>
-          )}
-          {phase === 'before' && (
+          ) : phase === 'before' ? (
             <div className="now-line" style={{ top: 0 }}>
               <span className="now-pill">
                 Starts in {humaniseMinutes(minutesUntil(event.startAt, now))}
               </span>
             </div>
-          )}
+          ) : null}
         </div>
 
-        {phase === 'after' && (
+        {phase === 'after' && !nowInRange && (
           <div className="now-line finished">
             <span className="now-pill">The event has finished</span>
           </div>

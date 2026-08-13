@@ -191,28 +191,53 @@ describe('spanHeight', () => {
 })
 
 describe('hourTicks: the date and time axis (US-058)', () => {
-  const midnightAt = (epoch: number) => epoch % (24 * 60 * MIN) === 0
-
-  it('marks every hour when there is room', () => {
+  it('marks every hour around a session', () => {
     const scale = buildTimeScale([session('a', 0, 180)], 0, 180 * MIN)
-    const ticks = hourTicks(scale, () => false)
+    const ticks = hourTicks(scale, [session('a', 0, 180)])
     expect(ticks.map((t) => t.epoch)).toEqual([0, 60 * MIN, 120 * MIN, 180 * MIN])
   })
 
-  it('thins the ticks out where the scale is compressed, so labels do not collide', () => {
-    const scale = buildTimeScale([], 0, 24 * 60 * MIN)
-    const ticks = hourTicks(scale, () => false, 18)
-    expect(ticks.length).toBeLessThan(24)
+  it('drops hour marks far from any session', () => {
+    // Nothing on until hour 12, so the small hours get no marks at all.
+    const sessions = [session('a', 12 * 60, 13 * 60)]
+    const scale = buildTimeScale(sessions, 0, 24 * 60 * MIN)
+    const ticks = hourTicks(scale, sessions)
+
+    expect(ticks.length).toBeGreaterThan(0)
+    for (const tick of ticks) {
+      expect(tick.epoch).toBeGreaterThanOrEqual(9 * 60 * MIN)
+      expect(tick.epoch).toBeLessThanOrEqual(16 * 60 * MIN)
+    }
   })
 
-  it('always keeps midnight, so a new day is never unlabelled', () => {
-    const scale = buildTimeScale([], 0, 48 * 60 * MIN)
-    const ticks = hourTicks(scale, midnightAt, 18)
-    expect(ticks.some((t) => t.isDayStart)).toBe(true)
+  it('keeps marks within three hours either side of a session', () => {
+    const sessions = [session('a', 12 * 60, 13 * 60)]
+    const scale = buildTimeScale(sessions, 0, 24 * 60 * MIN)
+    // Thinning may still drop individual marks inside the window, so this checks the window
+    // itself: the earliest kept mark is three hours before, and nothing survives outside it.
+    const epochs = hourTicks(scale, sessions).map((t) => t.epoch)
+
+    expect(Math.min(...epochs)).toBe(9 * 60 * MIN)
+    expect(Math.max(...epochs)).toBeLessThanOrEqual(16 * 60 * MIN)
+    expect(epochs).not.toContain(8 * 60 * MIN)
+    expect(epochs).not.toContain(17 * 60 * MIN)
+  })
+
+  it('produces no marks at all when nothing is scheduled', () => {
+    const scale = buildTimeScale([], 0, 24 * 60 * MIN)
+    expect(hourTicks(scale, [])).toEqual([])
+  })
+
+  it('thins the marks out where the scale is compressed, so labels do not collide', () => {
+    // A long quiet stretch flanked by sessions: the marks between them compress.
+    const sessions = [session('a', 0, 30), session('b', 20 * 60, 21 * 60)]
+    const scale = buildTimeScale(sessions, 0, 22 * 60 * MIN)
+    const ticks = hourTicks(scale, sessions, { nearMs: 24 * 3_600_000, minGapPx: 18 })
+    expect(ticks.length).toBeLessThan(22)
   })
 
   it('returns nothing for an empty scale', () => {
-    expect(hourTicks(buildTimeScale([], 0, 0), () => false)).toEqual([])
+    expect(hourTicks(buildTimeScale([], 0, 0), [])).toEqual([])
   })
 })
 

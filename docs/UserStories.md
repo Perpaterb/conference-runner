@@ -264,9 +264,11 @@ console.
       scrolling box clips, putting the times off the left of the page)
 - [x] The schedule runs midnight to midnight, so quiet time before the event start is shown
       rather than the day appearing to begin at the first session
-- [x] Hour marks run down the side of the schedule
-- [x] Midnight shows the date and a heavier rule, so a new day is never unlabelled
-- [x] Ticks thin out where the scale is compressed, so labels never collide
+- [x] Hour marks appear only within three hours of a session; the small hours get none
+- [x] Marks thin out where the scale is compressed, so labels never collide
+- [~] A time label is centred on the line it names
+- [x] Multi-day events get a separate date column on the far left, reading bottom to top, so a
+      date can never overlap a time
 - [x] Sessions outside the event's own start and end are still reachable rather than clipped
 
 ### US-055 Session detail

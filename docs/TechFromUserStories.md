@@ -240,9 +240,20 @@ The scale runs midnight to midnight (`startOfDayEpoch` / `endOfDayEpoch`) rather
 to event end, so the morning before the event begins reads as quiet time instead of the day
 appearing to start at 09:00.
 
-`hourTicks` walks the scale hour by hour and drops any tick that would land within 18px of the
-previous one, so labels stay legible where the scale is compressed. Midnight is always kept and
-renders the date with a heavier rule.
+`hourTicks` applies two filters. Marks more than three hours from any session are dropped, since
+hour lines through the small hours tell nobody anything and clutter the compressed bands. Marks
+that would land within 18px of the previous one are dropped too, so labels stay legible where the
+scale is compressed.
+
+Dates moved to their own column on the far left, one band per day reading bottom to top
+(`writing-mode: vertical-rl`), so a date can never collide with a time. The column only appears
+on multi-day events. Time labels are centred on the line they name with `translateY(-50%)`
+rather than sitting above it.
+
+Because the schedule now runs midnight to midnight, "before the event" no longer implies "off the
+top of the timeline": at 11:45 on the morning of a 14:00 start, the now-line belongs at 11:45. It
+is positioned at the real time whenever now falls inside the displayed range, and only pins to
+the top when it genuinely does not.
 
 ### US-051 Card density
 
@@ -324,7 +335,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-219 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+224 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

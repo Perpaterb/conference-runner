@@ -144,10 +144,41 @@ describe('US-053: the current time line', () => {
     expect(screen.queryByText(/The event starts in/)).not.toBeInTheDocument()
   })
 
-  it('reports the event as finished afterwards', () => {
+  it('marks the line as finished later the same day', () => {
     vi.setSystemTime(at(18))
     renderView()
+    // 18:00 is still on the displayed day, so the line stays where it belongs and says so.
+    expect(screen.getByText(/18:00 · finished/)).toBeInTheDocument()
+  })
+
+  it('drops the line below the schedule once the day is over', () => {
+    // Two days after the event: now is outside the displayed range entirely.
+    vi.setSystemTime(at(10) + 2 * 86_400_000)
+    renderView()
     expect(screen.getByText('The event has finished')).toBeInTheDocument()
+  })
+
+  it('shows the real current time before the event starts, not just a countdown', () => {
+    // Regression: the line pinned to the top whenever the event had not started, so at 11:45 on
+    // the morning of a 14:00 start it showed no time at all. Since the schedule now runs from
+    // midnight, 11:45 is on screen and the line belongs there.
+    vi.setSystemTime(at(11, 45))
+    const laterEvent = { ...event, startAt: at(14), endAt: at(16) }
+    render(
+      <AttendeeView
+        event={laterEvent}
+        member={member({ platform: { leader: false } })}
+        sessions={[session({ id: 's1', startAt: at(14), endAt: at(15) })]}
+        groups={[]}
+        requests={noRequests}
+        viewerEmail="a@x.com"
+        readOnly={false}
+      />,
+    )
+
+    const pill = document.querySelector('.now-line .now-pill')!
+    expect(pill.textContent).toContain('11:45')
+    expect(pill.textContent).toContain('starts in 2 hr, 15 min')
   })
 })
 
@@ -329,24 +360,41 @@ describe('the time axis', () => {
 })
 
 describe('the day runs midnight to midnight', () => {
-  it('starts the axis at 00:00 even though the event starts at 09:00', () => {
+  it('shows the small hours as quiet time rather than starting the day at 09:00', () => {
     vi.setSystemTime(at(10))
     renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(10) })] })
-
-    // Midnight is labelled with the date rather than 00:00, and it must be the first mark on
-    // the axis rather than the day appearing to begin at the first session.
-    const dayStart = document.querySelector('.hour-label.day-start')
-    expect(dayStart).not.toBeNull()
-    expect(dayStart!.textContent).toBe('28 Jun 2026')
-
-    // Early-morning hours are on the axis too, before anything is scheduled.
-    expect(screen.getAllByText(/0[1-8]:00/).length).toBeGreaterThan(0)
+    // A quiet band before the first session, and another after the last one.
+    expect(screen.getAllByText('Nothing scheduled for you')).toHaveLength(2)
   })
 
-  it('runs past the event end to the end of the day', () => {
+  it('puts no hour marks through the small hours, where nothing is on', () => {
     vi.setSystemTime(at(10))
     renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(10) })] })
-    expect(screen.getAllByText(/2[0-3]:00/).length).toBeGreaterThan(0)
+
+    // Marks appear around the session and nowhere else.
+    expect(screen.getAllByText(/0[6-9]:00|1[0-3]:00/).length).toBeGreaterThan(0)
+    expect(screen.queryByText('02:00')).not.toBeInTheDocument()
+    expect(screen.queryByText('22:00')).not.toBeInTheDocument()
+  })
+
+  it('gives a multi-day event its own date axis', () => {
+    vi.setSystemTime(at(10))
+    const twoDay = { ...event, endAt: at(17) + 86_400_000 }
+    render(
+      <AttendeeView
+        event={twoDay}
+        member={member({ platform: { leader: false } })}
+        sessions={[session({ id: 's1', startAt: at(9), endAt: at(10) })]}
+        groups={[]}
+        requests={noRequests}
+        viewerEmail="a@x.com"
+        readOnly={false}
+      />,
+    )
+    const bands = document.querySelectorAll('.day-band')
+    expect(bands.length).toBe(2)
+    expect(bands[0].textContent).toBe('28 Jun 2026')
+    expect(bands[1].textContent).toBe('29 Jun 2026')
   })
 })
 

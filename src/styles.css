@@ -397,18 +397,47 @@ label {
 .timeline-grid {
   position: relative;
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr);
+  grid-template-columns: 58px minmax(0, 1fr);
 }
 
+/* Multi-day events get a separate date column, so dates can never collide with the times. */
+.timeline-grid.with-dates {
+  grid-template-columns: 26px 58px minmax(0, 1fr);
+}
+
+.day-axis,
 .axis,
 .lanes {
   position: relative;
 }
 
+.day-axis {
+  border-right: 1px solid var(--line);
+}
+
+/* The date reads bottom-to-top down the side of the day it labels. */
+.day-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* The label is centred on the line it names, rather than sitting above it. */
 .hour-label {
   position: absolute;
-  right: 10px;
-  top: -0.65em;
+  right: 8px;
+  transform: translateY(-50%);
   font-size: 0.72rem;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -417,23 +446,12 @@ label {
   padding: 0 3px;
 }
 
-.hour-label.day-start {
-  color: var(--text);
-  font-size: 0.75rem;
-}
-
 .hour-line {
   position: absolute;
   left: 0;
   right: 0;
   border-top: 1px solid var(--grid-line);
   pointer-events: none;
-}
-
-/* Midnight gets a heavier rule, and the axis shows the date rather than the time. */
-.hour-line.day-start {
-  border-top: 2px solid var(--accent);
-  opacity: 0.85;
 }
 
 /*
@@ -474,15 +492,16 @@ label {
 
 /* Short cards give the text the room instead of the padding. */
 .session-card.short {
-  padding: 0.25rem 0.5rem;
-  line-height: 1.25;
+  padding: 0.15rem 0.5rem;
+  line-height: 1.2;
 }
 
 .session-card.tiny {
-  padding: 0.1rem 0.5rem;
+  padding: 0 0.5rem;
   display: flex;
   align-items: center;
-  line-height: 1.2;
+  line-height: 1.15;
+  border-radius: 7px;
 }
 
 .session-card:hover {
