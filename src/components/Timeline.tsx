@@ -20,11 +20,13 @@ import {
   type EventPhase,
 } from '../lib/layout'
 import {
+  endOfDayEpoch,
   epochToZonedParts,
   formatDate,
   formatTime,
   humaniseMinutes,
   minutesUntil,
+  startOfDayEpoch,
   timeZoneLabel,
 } from '../lib/time'
 import type { EventDoc, SessionDoc } from '../lib/types'
@@ -50,7 +52,11 @@ export default function Timeline({
   const [following, setFollowing] = useState(true)
   const programmatic = useRef(false)
 
-  const scale = buildTimeScale(sessions, event.startAt, event.endAt)
+  // The schedule runs whole days, midnight to midnight, so the morning before the event starts
+  // is shown as quiet time rather than the day appearing to begin at 09:00.
+  const dayStart = startOfDayEpoch(event.startAt, event.timeZone)
+  const dayEnd = endOfDayEpoch(event.endAt, event.timeZone)
+  const scale = buildTimeScale(sessions, dayStart, dayEnd)
   const placed = layoutSessions(sessions)
   const nowY = yForEpoch(scale, now)
 
@@ -109,65 +115,101 @@ export default function Timeline({
       </div>
 
       <div className="timeline-scroll" ref={scrollRef} onScroll={onScroll}>
-        <div className="timeline" style={{ height: scale.totalHeight }}>
-          {/* Compressed stretches are shaded, so it is obvious the scale is not uniform. */}
-          {scale.segments
-            .filter((s) => !s.busy)
-            .map((s) => (
-              <div
-                key={`gap-${s.startAt}`}
-                className="quiet-band"
-                style={{ top: s.top, height: s.height }}
+        {/*
+          The axis is a real grid column rather than content pushed into a negative offset. A
+          negatively positioned label inside a scrolling box is clipped and unreachable, which is
+          how the times ended up off the left edge.
+        */}
+        <div className="timeline-grid" style={{ height: scale.totalHeight }}>
+          <div className="axis">
+            {ticks.map((tick) => (
+              <span
+                key={tick.epoch}
+                className={`hour-label${tick.isDayStart ? ' day-start' : ''}`}
+                style={{ top: tick.y }}
               >
-                {s.height >= 46 && <span>Nothing scheduled for you</span>}
-              </div>
-            ))}
-
-          {/* The axis: date and time running down the side. */}
-          {ticks.map((tick) => (
-            <div
-              key={tick.epoch}
-              className={`hour-line${tick.isDayStart ? ' day-start' : ''}`}
-              style={{ top: tick.y }}
-            >
-              <span className="hour-label">
                 {tick.isDayStart ? (
                   <strong>{formatDate(tick.epoch, event.timeZone)}</strong>
                 ) : (
                   formatTime(tick.epoch, event.timeZone)
                 )}
               </span>
-            </div>
-          ))}
+            ))}
+          </div>
 
-          {placed.map(({ session, column, columns }) => {
-            const top = yForEpoch(scale, session.startAt)
-            const height = spanHeight(scale, session.startAt, session.endAt)
-            const widthPct = 100 / columns
-            return (
-              <button
-                key={session.id}
-                className="session-card"
-                style={{
-                  top,
-                  height,
-                  left: `calc(${column * widthPct}% + 2px)`,
-                  width: `calc(${widthPct}% - 6px)`,
-                }}
-                onClick={() => onOpenSession(session)}
-              >
-                <div className="t">{session.title}</div>
-                <div className="meta">
-                  {formatTime(session.startAt, event.timeZone)} to{' '}
-                  {formatTime(session.endAt, event.timeZone)}
-                  {session.location ? ` · ${session.location}` : ''}
+          <div className="lanes">
+            {/* Compressed stretches are shaded, so it is obvious the scale is not uniform. */}
+            {scale.segments
+              .filter((seg) => !seg.busy)
+              .map((seg) => (
+                <div
+                  key={`gap-${seg.startAt}`}
+                  className="quiet-band"
+                  style={{ top: seg.top, height: seg.height }}
+                >
+                  {seg.height >= 46 && <span>Nothing scheduled for you</span>}
                 </div>
-                {height > 74 && session.description && (
-                  <div className="desc">{session.description}</div>
-                )}
-              </button>
-            )
-          })}
+              ))}
+
+            {ticks.map((tick) => (
+              <div
+                key={tick.epoch}
+                className={`hour-line${tick.isDayStart ? ' day-start' : ''}`}
+                style={{ top: tick.y }}
+              />
+            ))}
+
+            {placed.map(({ session, column, columns }) => {
+              const top = yForEpoch(scale, session.startAt)
+              const height = spanHeight(scale, session.startAt, session.endAt)
+              const widthPct = 100 / columns
+              // Short cards drop to two lines, then to one, rather than squeezing three lines
+              // into space that cannot hold them.
+              const density = height < 52 ? 'tiny' : height < 86 ? 'short' : 'full'
+              const times = `${formatTime(session.startAt, event.timeZone)} to ${formatTime(
+                session.endAt,
+                event.timeZone,
+              )}`
+              return (
+                <button
+                  key={session.id}
+                  className={`session-card ${density}`}
+                  style={{
+                    top,
+                    height,
+                    left: `calc(${column * widthPct}% + 2px)`,
+                    width: `calc(${widthPct}% - 6px)`,
+                  }}
+                  onClick={() => onOpenSession(session)}
+                  title={`${session.title} · ${times}${
+                    session.location ? ` · ${session.location}` : ''
+                  }`}
+                >
+                  {density === 'tiny' ? (
+                    <div className="one-line">
+                      <strong>{session.title}</strong>
+                      <span className="meta">
+                        {' '}
+                        · {times}
+                        {session.location ? ` · ${session.location}` : ''}
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="t">{session.title}</div>
+                      <div className="meta">
+                        {times}
+                        {session.location ? ` · ${session.location}` : ''}
+                      </div>
+                      {density === 'full' && session.description && (
+                        <div className="desc">{session.description}</div>
+                      )}
+                    </>
+                  )}
+                </button>
+              )
+            })}
+          </div>
 
           {/* US-053: the now-line, above everything, positioned through the same scale. */}
           {phase === 'during' && (
@@ -185,7 +227,7 @@ export default function Timeline({
         </div>
 
         {phase === 'after' && (
-          <div className="now-line" style={{ position: 'relative', marginTop: '1rem' }}>
+          <div className="now-line finished">
             <span className="now-pill">The event has finished</span>
           </div>
         )}

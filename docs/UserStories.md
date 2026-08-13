@@ -228,6 +228,10 @@ console.
 
 ### US-051 Session cards
 - [x] Cards show title, start and finish times and location
+- [x] A short session (about 15 minutes) gets one line, clipped at the width rather than squeezed
+- [x] A medium session gets two lines, title and times
+- [x] A long session also gets its description, clamped to two lines
+- [~] Short cards use less vertical padding so the text gets the room
 - [x] Times are shown in the event zone
 - [~] Description appears on cards tall enough to fit it
 
@@ -256,6 +260,10 @@ console.
 - [~] Compressed bands are shaded so it is visible that the scale is not uniform
 
 ### US-058 Date and time axis
+- [x] The axis is a real grid column, not content pushed into a negative offset (which a
+      scrolling box clips, putting the times off the left of the page)
+- [x] The schedule runs midnight to midnight, so quiet time before the event start is shown
+      rather than the day appearing to begin at the first session
 - [x] Hour marks run down the side of the schedule
 - [x] Midnight shows the date and a heavier rule, so a new day is never unlabelled
 - [x] Ticks thin out where the scale is compressed, so labels never collide

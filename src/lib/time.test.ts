@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   defaultEventWindow,
+  endOfDayEpoch,
+  startOfDayEpoch,
   epochToZonedParts,
   formatCsvDateTime,
   formatDate,
@@ -169,5 +171,41 @@ describe('defaultEventWindow (US-010 prefill)', () => {
       const { startAt, endAt } = defaultEventWindow(zone)
       expect(endAt).toBeGreaterThan(startAt)
     }
+  })
+})
+
+describe('day boundaries (schedule runs midnight to midnight)', () => {
+  it('finds midnight at the start of the day in the event zone', () => {
+    const nineAm = zonedTimeToEpoch(2026, 6, 28, 9, 0, SYDNEY)
+    expect(formatDateTime(startOfDayEpoch(nineAm, SYDNEY), SYDNEY)).toBe('28 Jun 2026, 00:00')
+  })
+
+  it('finds midnight at the end of the day', () => {
+    const fivePm = zonedTimeToEpoch(2026, 6, 28, 17, 0, SYDNEY)
+    expect(formatDateTime(endOfDayEpoch(fivePm, SYDNEY), SYDNEY)).toBe('29 Jun 2026, 00:00')
+  })
+
+  it('uses the event zone, not the device zone', () => {
+    // 08:00 in Sydney is still the previous day in London.
+    const epoch = zonedTimeToEpoch(2026, 6, 28, 8, 0, SYDNEY)
+    expect(formatDate(startOfDayEpoch(epoch, SYDNEY), SYDNEY)).toBe('28 Jun 2026')
+    expect(formatDate(startOfDayEpoch(epoch, LONDON), LONDON)).toBe('27 Jun 2026')
+  })
+
+  it('is already midnight when given midnight', () => {
+    const midnight = zonedTimeToEpoch(2026, 6, 28, 0, 0, SYDNEY)
+    expect(startOfDayEpoch(midnight, SYDNEY)).toBe(midnight)
+  })
+
+  it('crosses a month boundary', () => {
+    const epoch = zonedTimeToEpoch(2026, 6, 30, 17, 0, SYDNEY)
+    expect(formatDate(endOfDayEpoch(epoch, SYDNEY), SYDNEY)).toBe('01 Jul 2026')
+  })
+
+  it('handles the day daylight saving starts', () => {
+    // Sydney springs forward on 4 Oct 2026; that day is 23 hours long.
+    const epoch = zonedTimeToEpoch(2026, 10, 4, 12, 0, SYDNEY)
+    expect(formatDateTime(startOfDayEpoch(epoch, SYDNEY), SYDNEY)).toBe('04 Oct 2026, 00:00')
+    expect(formatDateTime(endOfDayEpoch(epoch, SYDNEY), SYDNEY)).toBe('05 Oct 2026, 00:00')
   })
 })

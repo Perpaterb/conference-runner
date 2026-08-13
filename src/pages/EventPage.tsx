@@ -159,7 +159,7 @@ function EventShell({
 
   const viewingAs = impersonating ?? myMember
   const showAttendeeView = !team || impersonating !== null
-  const now = useNow(15_000)
+  const now = useNow()
 
   // The status bar reports on whatever this viewer can actually see.
   const statusSessions = showAttendeeView

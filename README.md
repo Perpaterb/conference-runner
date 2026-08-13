@@ -134,7 +134,7 @@ shows what is on now and what is next.
 ## Testing
 
 ```bash
-npm test                     # 204 unit and component tests
+npm test                     # 219 unit and component tests
 npm run test:rules           # 57 security rules tests against a Firestore emulator
 npm run test:verify-fails    # proves the suite catches broken logic
 npm run story-coverage       # which user stories have automated coverage

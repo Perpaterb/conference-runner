@@ -158,10 +158,17 @@ describe('US-054: empty stretches', () => {
     expect(screen.getAllByText('Nothing scheduled for you').length).toBeGreaterThan(0)
   })
 
-  it('shows no such note when sessions cover the whole event', () => {
+  it('shows no quiet band when sessions cover the whole day', () => {
+    vi.setSystemTime(at(10))
+    renderView({ sessions: [session({ id: 's1', startAt: at(0), endAt: at(24) })] })
+    expect(screen.queryByText('Nothing scheduled for you')).not.toBeInTheDocument()
+  })
+
+  it('shows quiet time before the event starts, since the day runs from midnight', () => {
     vi.setSystemTime(at(10))
     renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(17) })] })
-    expect(screen.queryByText('Nothing scheduled for you')).not.toBeInTheDocument()
+    // 00:00 to 09:00 and 17:00 to midnight are both quiet for this attendee.
+    expect(screen.getAllByText('Nothing scheduled for you')).toHaveLength(2)
   })
 })
 
@@ -318,5 +325,59 @@ describe('the time axis', () => {
     vi.setSystemTime(at(10))
     renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(10) })] })
     expect(screen.getAllByText('Nothing scheduled for you').length).toBeGreaterThan(0)
+  })
+})
+
+describe('the day runs midnight to midnight', () => {
+  it('starts the axis at 00:00 even though the event starts at 09:00', () => {
+    vi.setSystemTime(at(10))
+    renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(10) })] })
+
+    // Midnight is labelled with the date rather than 00:00, and it must be the first mark on
+    // the axis rather than the day appearing to begin at the first session.
+    const dayStart = document.querySelector('.hour-label.day-start')
+    expect(dayStart).not.toBeNull()
+    expect(dayStart!.textContent).toBe('28 Jun 2026')
+
+    // Early-morning hours are on the axis too, before anything is scheduled.
+    expect(screen.getAllByText(/0[1-8]:00/).length).toBeGreaterThan(0)
+  })
+
+  it('runs past the event end to the end of the day', () => {
+    vi.setSystemTime(at(10))
+    renderView({ sessions: [session({ id: 's1', startAt: at(9), endAt: at(10) })] })
+    expect(screen.getAllByText(/2[0-3]:00/).length).toBeGreaterThan(0)
+  })
+})
+
+describe('card density', () => {
+  const cardFor = (title: string) => screen.getByText(title).closest('button')!
+
+  it('gives a 15 minute session a single clipped line', () => {
+    vi.setSystemTime(at(10))
+    renderView({
+      sessions: [
+        session({ id: 'a', title: 'Standup', startAt: at(9), endAt: at(9, 15), location: 'Room 1' }),
+        session({ id: 'b', title: 'Filler', startAt: at(9, 15), endAt: at(12) }),
+      ],
+    })
+    expect(cardFor('Standup').className).toContain('tiny')
+  })
+
+  it('gives a long session room for its description', () => {
+    vi.setSystemTime(at(10))
+    renderView({
+      sessions: [
+        session({
+          id: 'a',
+          title: 'Workshop',
+          description: 'Bring the dependency board',
+          startAt: at(9),
+          endAt: at(12),
+        }),
+      ],
+    })
+    expect(cardFor('Workshop').className).toContain('full')
+    expect(screen.getByText('Bring the dependency board')).toBeInTheDocument()
   })
 })

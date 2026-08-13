@@ -238,6 +238,25 @@ export function supportedTimeZones(): string[] {
   ]
 }
 
+/** Midnight at the start of the day containing `epoch`, in `timeZone`. */
+export function startOfDayEpoch(epoch: number, timeZone: string): number {
+  const p = epochToZonedParts(epoch, timeZone)
+  return zonedTimeToEpoch(p.year, p.month, p.day, 0, 0, timeZone)
+}
+
+/**
+ * Midnight at the end of the day containing `epoch`, in `timeZone`.
+ *
+ * Found by probing from midday and adding 24 hours, so a daylight-saving shift cannot land the
+ * probe back on the same date or skip one.
+ */
+export function endOfDayEpoch(epoch: number, timeZone: string): number {
+  const p = epochToZonedParts(epoch, timeZone)
+  const midday = zonedTimeToEpoch(p.year, p.month, p.day, 12, 0, timeZone)
+  const next = epochToZonedParts(midday + 86_400_000, timeZone)
+  return zonedTimeToEpoch(next.year, next.month, next.day, 0, 0, timeZone)
+}
+
 /**
  * Sensible defaults for a new event: today at 09:00 through tomorrow at 17:00, as wall-clock
  * times in the event's own zone.

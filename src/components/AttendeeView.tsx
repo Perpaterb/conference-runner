@@ -37,7 +37,7 @@ export default function AttendeeView({
   /** Team members previewing or impersonating see how much of the agenda this person gets. */
   showCoverage?: boolean
 }) {
-  const now = useNow(15_000)
+  const now = useNow()
   const [openSession, setOpenSession] = useState<SessionDoc | null>(null)
 
   const myGroups = Object.keys(member?.groups ?? {})

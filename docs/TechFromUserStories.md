@@ -232,9 +232,24 @@ keeps the schedule scrollable.
 
 ### US-058 The axis
 
+The timeline is a CSS grid with the axis as a real 86px column. It was previously absolutely
+positioned into a negative offset inside the scrolling box, and a scroll container clips content
+to the left of its origin, which is how the times ended up off the left edge and unreachable.
+
+The scale runs midnight to midnight (`startOfDayEpoch` / `endOfDayEpoch`) rather than event start
+to event end, so the morning before the event begins reads as quiet time instead of the day
+appearing to start at 09:00.
+
 `hourTicks` walks the scale hour by hour and drops any tick that would land within 18px of the
 previous one, so labels stay legible where the scale is compressed. Midnight is always kept and
 renders the date with a heavier rule.
+
+### US-051 Card density
+
+Card content is chosen from the rendered height, not the duration, because the same duration
+occupies different space depending on the compression around it. Under 52px a card gets one
+clipped line; under 86px, title and times; above that, the description as well, clamped to two
+lines. Short cards drop most of their vertical padding so the text gets the room.
 
 ### US-061 Coverage indicator
 
@@ -309,7 +324,7 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ## Testing
 
-204 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+219 unit and component tests, plus 57 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

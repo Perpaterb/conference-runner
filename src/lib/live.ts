@@ -224,7 +224,7 @@ export function useLiveDoc<T extends WithId>(
 }
 
 /** A clock that re-renders on an interval, for the now-line and countdowns. */
-export function useNow(intervalMs = 15_000): number {
+export function useNow(intervalMs = 5_000): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), intervalMs)

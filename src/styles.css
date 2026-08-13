@@ -390,49 +390,59 @@ label {
   padding: 0 1rem 40vh;
 }
 
-.timeline {
+/*
+ * The axis is a real grid column. Absolutely positioning it into a negative offset inside a
+ * scrolling box gets it clipped, which is how the times ended up off the left of the page.
+ */
+.timeline-grid {
   position: relative;
-  margin-left: 86px;
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+}
+
+.axis,
+.lanes {
+  position: relative;
+}
+
+.hour-label {
+  position: absolute;
+  right: 10px;
+  top: -0.65em;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: var(--bg);
+  padding: 0 3px;
+}
+
+.hour-label.day-start {
+  color: var(--text);
+  font-size: 0.75rem;
 }
 
 .hour-line {
   position: absolute;
-  left: -86px;
+  left: 0;
   right: 0;
   border-top: 1px solid var(--grid-line);
   pointer-events: none;
 }
 
-/* Midnight gets a heavier rule and the date rather than the time. */
+/* Midnight gets a heavier rule, and the axis shows the date rather than the time. */
 .hour-line.day-start {
   border-top: 2px solid var(--accent);
   opacity: 0.85;
 }
 
-.hour-label {
-  position: absolute;
-  left: -82px;
-  top: -0.65em;
-  width: 76px;
-  font-size: 0.72rem;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  background: var(--bg);
-  padding-right: 4px;
-}
-
-.hour-line.day-start .hour-label {
-  color: var(--text);
-  font-size: 0.75rem;
-}
-
 /*
- * A stretch with nothing on for this person. It is drawn at a compressed scale, so the shading
- * is what tells the reader the axis is not uniform here.
+ * A stretch with nothing on for this person, drawn at a compressed scale. The shading is what
+ * tells the reader the axis is not uniform here.
  */
 .quiet-band {
   position: absolute;
-  left: -86px;
+  left: 0;
   right: 0;
   display: grid;
   place-items: center;
@@ -456,10 +466,23 @@ label {
   border: 1px solid var(--line);
   border-left: 3px solid var(--accent);
   border-radius: 10px;
-  padding: 0.5rem 0.6rem;
+  padding: 0.45rem 0.55rem;
   text-align: left;
   color: inherit;
   display: block;
+}
+
+/* Short cards give the text the room instead of the padding. */
+.session-card.short {
+  padding: 0.25rem 0.5rem;
+  line-height: 1.25;
+}
+
+.session-card.tiny {
+  padding: 0.1rem 0.5rem;
+  display: flex;
+  align-items: center;
+  line-height: 1.2;
 }
 
 .session-card:hover {
@@ -469,42 +492,61 @@ label {
 .session-card .t {
   font-weight: 600;
   font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .session-card .meta {
   color: var(--muted);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A 15 minute card gets one line, clipped at the width rather than wrapped into nothing. */
+.session-card .one-line {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.session-card .one-line .meta {
+  display: inline;
+  font-size: 0.76rem;
 }
 
 .session-card .desc {
   color: var(--muted);
   font-size: 0.8rem;
-  margin-top: 0.2rem;
-}
-
-.gap-note {
-  position: absolute;
-  left: 0;
-  right: 0;
-  display: grid;
-  place-items: center;
-  color: var(--gap-text);
-  font-size: 0.85rem;
-  font-style: italic;
-  pointer-events: none;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* The now line sits above every card (US-053). */
 .now-line {
   position: absolute;
-  left: -86px;
+  left: 0;
   right: 0;
   z-index: 30;
   pointer-events: none;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.now-line.finished {
+  position: relative;
+  margin-top: 1rem;
 }
 
 .now-line::after {
