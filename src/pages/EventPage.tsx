@@ -161,6 +161,9 @@ function NotOnTheList({ event }: { event: EventDoc }) {
         <span className="brand">{event.name}</span>
         <span className="spacer" />
         <CollapsingActions>
+          <Link className="small ghost topbar-link" to="/help">
+            Help
+          </Link>
           <span className="muted small">{email}</span>
           <ThemeToggle />
           <button className="small ghost" onClick={() => void signOutNow()}>
@@ -279,6 +282,9 @@ function EventShell({
               My events
             </Link>
           )}
+          <Link className="small ghost topbar-link" to="/help">
+            Help
+          </Link>
           <span className="muted small">{email}</span>
           <ThemeToggle />
           <button className="small ghost" onClick={() => void signOutNow()}>

@@ -83,7 +83,8 @@ src/lib/          pure logic, fully unit tested
   layout.ts       timeline positioning and side-by-side overlap columns
   data.ts         Firestore reads and writes
   live.ts         realtime subscriptions with a polling fallback
-src/pages/        home (event CMS) and the event page
+src/pages/        home (event CMS), the event page, and help
+  markdown.ts     small reader so the help page renders docs/UserStories.md itself
 src/components/   attendee view, team console, editors
 ```
 
@@ -134,7 +135,7 @@ shows what is on now and what is next.
 ## Testing
 
 ```bash
-npm test                     # 248 unit and component tests
+npm test                     # 274 unit and component tests
 npm run test:rules           # 66 security rules tests against a Firestore emulator
 npm run test:verify-fails    # proves the suite catches broken logic
 npm run story-coverage       # which user stories have automated coverage
@@ -151,7 +152,7 @@ fail is not a check.
 `scripts/verify-rules-tests-fail.sh` proves that suite has teeth by opening nine deliberate
 security holes and checking each one turns it red.
 
-`story-coverage` reports honestly. At the time of writing it is **33 of 45 stories (73%)**. The
+`story-coverage` reports honestly. At the time of writing it is **35 of 46 stories (76%)**. The
 uncovered ones need a signed-in browser against a real Firebase project, which the unit suite
 cannot reach, so they are listed as needing manual verification rather than quietly assumed to
 work. `smoke.sh` verifies a deployment is reachable, built correctly and wired to Firebase; it

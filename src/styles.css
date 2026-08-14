@@ -971,6 +971,74 @@ th {
   }
 }
 
+/* ---------- rendered markdown (help page) ---------- */
+
+.markdown {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.markdown .md-heading {
+  margin-top: 1.4rem;
+}
+
+.markdown .md-rule {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1.4rem 0;
+}
+
+.markdown .md-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0 0 0.9rem;
+}
+
+.markdown .md-list li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.markdown .md-check .md-box {
+  flex: 0 0 1.35rem;
+  height: 1.35rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.markdown .md-check.done .md-box {
+  color: var(--ok);
+  border-color: rgba(52, 211, 153, 0.5);
+}
+
+.markdown .md-check.partial .md-box {
+  color: var(--warn);
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.markdown .md-check.todo .md-box {
+  color: var(--muted);
+}
+
+.markdown code {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0 0.25rem;
+  font-size: 0.85em;
+}
+
+.markdown blockquote {
+  margin: 0 0 0.9rem;
+}
+
 /* ---------- misc ---------- */
 
 .qr {

@@ -5,6 +5,7 @@ import { isFirebaseConfigured } from './lib/firebase'
 import HomePage from './pages/HomePage'
 import EventPage from './pages/EventPage'
 import SetupNeeded from './pages/SetupNeeded'
+import HelpPage from './pages/HelpPage'
 
 /**
  * Hash routing is deliberate (US-001). GitHub Pages cannot rewrite unknown paths to index.html,
@@ -20,6 +21,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/e/:eventId" element={<EventPage />} />
+              <Route path="/help" element={<HelpPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </HashRouter>

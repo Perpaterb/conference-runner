@@ -423,9 +423,35 @@ Files: `src/components/RequestsTab.tsx`, `src/components/AttendeeView.tsx`, `src
 
 ---
 
+## EP9: Help
+
+### US-041 Help and instructions
+
+`HelpPage` is organised by what somebody is trying to do (set up an event, get people in, build
+the schedule, run the event) rather than by screen, plus a role table and a troubleshooting list
+covering the failures that actually happened during the build: not on the attendee list, the
+connection badge, unpublished rules, and silent Google sign-in.
+
+The user stories are rendered from `docs/UserStories.md` itself, imported with Vite's `?raw`, so
+the page cannot drift from the source of truth. `src/lib/markdown.ts` is a small reader for
+exactly the subset that file uses: headings, checklists with the three states, plain bullets,
+tables, blockquotes, rules, and inline code, bold and links. It returns a structure rather than
+HTML, so the page renders real elements and nothing is injected as markup.
+
+The stories are collapsed behind a button, with the counts of done, partial and not-done stated
+above them, so the page reports progress honestly rather than implying completeness.
+
+The page renders without Firebase, since somebody who cannot sign in is exactly the person most
+likely to need it.
+
+Files: `src/pages/HelpPage.tsx`, `src/lib/markdown.ts`, `src/lib/markdown.test.ts`,
+`src/pages/HelpPage.test.tsx`, `src/App.tsx`, `src/styles.css`
+
+---
+
 ## Testing
 
-248 unit and component tests, plus 66 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
+274 unit and component tests, plus 66 security rules tests across `time`, `csv`, `roles`, `layout`, `data`, the attendee view
 and the unconfigured-app path.
 
 `scripts/verify-tests-fail.sh` mutates seven pieces of core logic in turn and asserts the suite

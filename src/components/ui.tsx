@@ -126,6 +126,9 @@ export function useIsNarrow(maxWidth = 860): boolean {
     () => typeof window !== 'undefined' && window.innerWidth <= maxWidth,
   )
   useEffect(() => {
+    // Guarded so an environment without matchMedia falls back to the wide layout rather than
+    // failing to render at all.
+    if (typeof window.matchMedia !== 'function') return
     const mq = window.matchMedia(`(max-width: ${maxWidth}px)`)
     const onChange = () => setNarrow(mq.matches)
     onChange()

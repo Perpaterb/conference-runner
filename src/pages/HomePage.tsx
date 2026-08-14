@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { useAuth } from '../lib/auth'
 import { db } from '../lib/firebase'
@@ -122,6 +123,9 @@ export default function HomePage() {
         <span className="brand">Conference Runner</span>
         <span className="spacer" />
         <CollapsingActions>
+          <Link className="small ghost topbar-link" to="/help">
+            Help
+          </Link>
           <span className="muted small">{user.email}</span>
           <ThemeToggle />
           <button className="small ghost" onClick={() => void signOutNow()}>

@@ -13,7 +13,7 @@ Google Auth) as the live backend.
 
 The distinction is deliberate. Most of the `[~]` items need a signed-in browser talking to a real
 Firebase project, which the unit suite cannot reach. `npm run story-coverage` prints the same
-split. Current automated story coverage: **33 of 45 (73%)**.
+split. Current automated story coverage: **35 of 46 (76%)**.
 
 ---
 
@@ -393,6 +393,22 @@ covers the need and is always labelled.
 - [x] A group leader can only address people in groups they lead
 - [x] An event team member can address anyone
 - [~] Enforced per recipient in security rules (unverified, see US-003)
+
+---
+
+## EP9: Help
+
+### US-041 Help and instructions
+- [~] A help page reachable from the home page and from inside an event
+- [~] Instructions organised by what someone is trying to do, not by screen
+- [~] A table of what each role can and cannot do
+- [~] An explanation of the schedule's non-uniform scale, which is surprising if unexplained
+- [~] Troubleshooting for the things that actually went wrong: not on the attendee list, the
+      connection indicator, and rules that have not been published
+- [x] The user stories are rendered on the page from `docs/UserStories.md` itself, so the help
+      page cannot drift out of date with the source of truth
+- [x] Markdown rendering covers exactly what that file uses: headings, checklists, tables,
+      blockquotes, rules and inline formatting
 
 ---
 
